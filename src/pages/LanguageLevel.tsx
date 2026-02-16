@@ -290,18 +290,81 @@ const LanguageLevel = () => {
           <Card className="bg-white/10 backdrop-blur-lg border-white/20">
             <CardHeader>
               <CardTitle className="text-white">💻 Coding Challenge</CardTitle>
-              <CardDescription className="text-gray-300">Practice what you learned</CardDescription>
+              <CardDescription className="text-gray-300">Apply what you learned — write the code yourself</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Problem Statement */}
               <div className="bg-gray-900/80 rounded-lg p-5 border border-white/10">
-                <h4 className="text-white font-semibold text-lg mb-3">Problem</h4>
+                <h4 className="text-white font-semibold text-lg mb-3">📋 Problem</h4>
                 <p className="text-gray-200">{levelContent.codingChallenge.problem}</p>
               </div>
 
-              {levelContent.codingChallenge.input && levelContent.codingChallenge.input !== 'None' && (
+              {/* Task Requirements */}
+              {levelContent.codingChallenge.tasks.length > 0 && (
                 <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
-                  <h5 className="text-blue-400 font-semibold mb-2">Sample Input</h5>
-                  <p className="text-gray-300 text-sm">{levelContent.codingChallenge.input}</p>
+                  <h5 className="text-blue-400 font-semibold mb-3">✅ Tasks</h5>
+                  <ul className="space-y-2">
+                    {levelContent.codingChallenge.tasks.map((task, i) => (
+                      <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                        <span className="text-blue-400 font-bold mt-0.5">{i + 1}.</span>
+                        <span>{task}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Constraints */}
+              {levelContent.codingChallenge.constraints && levelContent.codingChallenge.constraints.length > 0 && (
+                <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
+                  <h5 className="text-orange-400 font-semibold mb-3">⚠️ Constraints</h5>
+                  <ul className="space-y-1">
+                    {levelContent.codingChallenge.constraints.map((c, i) => (
+                      <li key={i} className="text-gray-300 text-sm flex items-start gap-2">
+                        <span className="text-orange-400">•</span>
+                        <span>{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Public Test Cases */}
+              {levelContent.codingChallenge.testCases.length > 0 && (
+                <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
+                  <h5 className="text-green-400 font-semibold mb-3">🧪 Test Cases</h5>
+                  <div className="space-y-3">
+                    {levelContent.codingChallenge.testCases.map((tc, i) => (
+                      <div key={i} className="bg-black/30 rounded-md p-3 border border-white/5">
+                        <p className="text-gray-400 text-xs mb-1">Test Case {i + 1}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase mb-1">Input</p>
+                            <pre className="text-gray-200 text-sm whitespace-pre-wrap">{tc.input}</pre>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase mb-1">Expected Output</p>
+                            <pre className="text-green-300 text-sm whitespace-pre-wrap">{tc.output}</pre>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Hints */}
+              {levelContent.codingChallenge.hints.length > 0 && (
+                <div className="bg-yellow-900/20 rounded-lg p-4 border border-yellow-500/20">
+                  <h5 className="text-yellow-400 font-semibold mb-3">💡 Hints</h5>
+                  <ul className="space-y-2">
+                    {levelContent.codingChallenge.hints.map((hint, i) => (
+                      <li key={i} className="text-yellow-200/80 text-sm flex items-start gap-2">
+                        <span className="text-yellow-400">→</span>
+                        <span>{hint}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </CardContent>
