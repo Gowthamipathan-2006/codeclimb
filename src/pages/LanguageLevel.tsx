@@ -298,21 +298,12 @@ const LanguageLevel = () => {
                 <p className="text-gray-200">{levelContent.codingChallenge.problem}</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {levelContent.codingChallenge.input && levelContent.codingChallenge.input !== 'None' && (
                 <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
-                  <h5 className="text-blue-400 font-semibold mb-2">Input</h5>
+                  <h5 className="text-blue-400 font-semibold mb-2">Sample Input</h5>
                   <p className="text-gray-300 text-sm">{levelContent.codingChallenge.input}</p>
                 </div>
-                <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
-                  <h5 className="text-green-400 font-semibold mb-2">Expected Output</h5>
-                  <p className="text-gray-300 text-sm">{levelContent.codingChallenge.output}</p>
-                </div>
-              </div>
-
-              <div className="bg-gray-900 rounded-lg p-4">
-                <h5 className="text-yellow-400 font-semibold mb-2">Example Solution</h5>
-                <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap"><code>{levelContent.codingChallenge.example}</code></pre>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}
