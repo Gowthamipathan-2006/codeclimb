@@ -10,7 +10,7 @@ import { Code, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Signup = () => {
-  const [userId, setUserId] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,10 +29,10 @@ const Signup = () => {
     }
 
     try {
-      const success = await signup(userId, email, password);
+      const success = await signup(displayName, email, password);
       if (success) {
-        toast({ title: "Account Created! 🎉", description: "Your account has been created successfully. Please log in." });
-        navigate('/login');
+        toast({ title: "Account Created! 🎉", description: "Welcome to CodeClimb!" });
+        navigate('/dashboard');
       } else {
         toast({ title: "Signup Failed", description: "An account with this email already exists.", variant: "destructive" });
       }
@@ -60,15 +60,15 @@ const Signup = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="userId" className="text-foreground font-semibold">User ID</Label>
+              <Label htmlFor="displayName" className="text-foreground font-semibold">Display Name</Label>
               <Input
-                id="userId"
+                id="displayName"
                 type="text"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
                 required
                 className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
-                placeholder="Choose a unique user ID"
+                placeholder="Choose a display name"
               />
             </div>
             <div className="space-y-2">

@@ -1,18 +1,14 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-
-interface Progress {
-  [language: string]: {
-    [level: number]: boolean;
-  };
-}
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProgressContextType {
-  progress: Progress;
-  completeLevel: (language: string, level: number) => void;
+  completeLevel: (language: string, level: number) => Promise<void>;
   isLevelUnlocked: (language: string, level: number) => boolean;
   getCompletedLevels: (language: string) => number;
+  getHighestCompletedLevel: (language: string) => number;
+  loading: boolean;
 }
 
 const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
@@ -31,48 +27,79 @@ interface ProgressProviderProps {
 
 export const ProgressProvider: React.FC<ProgressProviderProps> = ({ children }) => {
   const { user } = useAuth();
-  const [progress, setProgress] = useState<Progress>({});
+  const [progressMap, setProgressMap] = useState<{ [language: string]: Set<number> }>({});
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const savedProgress = localStorage.getItem(`codeclimb_progress_${user.id}`);
-      if (savedProgress) {
-        setProgress(JSON.parse(savedProgress));
-      }
+  const fetchProgress = useCallback(async () => {
+    if (!user) {
+      setProgressMap({});
+      return;
     }
+    setLoading(true);
+    const { data } = await supabase
+      .from('user_progress')
+      .select('language, completed_level')
+      .eq('user_id', user.id);
+
+    const map: { [language: string]: Set<number> } = {};
+    (data ?? []).forEach(row => {
+      if (!map[row.language]) map[row.language] = new Set();
+      map[row.language].add(row.completed_level);
+    });
+    setProgressMap(map);
+    setLoading(false);
   }, [user]);
 
-  const completeLevel = (language: string, level: number) => {
+  useEffect(() => {
+    fetchProgress();
+  }, [fetchProgress]);
+
+  const completeLevel = async (language: string, level: number) => {
     if (!user) return;
-    
-    const newProgress = {
-      ...progress,
-      [language]: {
-        ...progress[language],
-        [level]: true
-      }
-    };
-    
-    setProgress(newProgress);
-    localStorage.setItem(`codeclimb_progress_${user.id}`, JSON.stringify(newProgress));
+    const highest = getHighestCompletedLevel(language);
+    // Only allow completing the next sequential level
+    if (level > highest + 1) return;
+
+    const { error } = await supabase
+      .from('user_progress')
+      .upsert(
+        { user_id: user.id, language, completed_level: level },
+        { onConflict: 'user_id,language,completed_level' }
+      );
+
+    if (!error) {
+      setProgressMap(prev => {
+        const next = { ...prev };
+        if (!next[language]) next[language] = new Set();
+        next[language] = new Set(next[language]);
+        next[language].add(level);
+        return next;
+      });
+    }
   };
 
   const isLevelUnlocked = (language: string, level: number) => {
     if (level === 1) return true;
-    return progress[language]?.[level - 1] === true;
+    return (progressMap[language]?.has(level - 1)) ?? false;
   };
 
   const getCompletedLevels = (language: string) => {
-    if (!progress[language]) return 0;
-    return Object.values(progress[language]).filter(Boolean).length;
+    return progressMap[language]?.size ?? 0;
+  };
+
+  const getHighestCompletedLevel = (language: string) => {
+    const set = progressMap[language];
+    if (!set || set.size === 0) return 0;
+    return Math.max(...set);
   };
 
   return (
     <ProgressContext.Provider value={{
-      progress,
       completeLevel,
       isLevelUnlocked,
-      getCompletedLevels
+      getCompletedLevels,
+      getHighestCompletedLevel,
+      loading
     }}>
       {children}
     </ProgressContext.Provider>
