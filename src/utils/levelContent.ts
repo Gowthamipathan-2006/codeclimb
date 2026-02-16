@@ -7,9 +7,17 @@ export interface QuizQuestion {
   correctAnswer: string;
 }
 
+export interface TestCase {
+  input: string;
+  output: string;
+}
+
 export interface CodingChallenge {
   problem: string;
-  input: string;
+  tasks: string[];
+  constraints?: string[];
+  testCases: TestCase[];
+  hints: string[];
 }
 
 export interface LevelContent {
@@ -40,7 +48,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What is the correct file extension for C source code?', options: ['.cpp', '.c', '.java', '.py'], correctAnswer: '.c' },
       { question: 'What does #include <stdio.h> do?', options: ['Includes standard input/output library', 'Includes math library', 'Creates a new file', 'Defines a variable'], correctAnswer: 'Includes standard input/output library' }
     ],
-    codingChallenge: { problem: 'Write a C program that prints "Hello, CodeClimb!" to the console.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a C program that prints "Hello, CodeClimb!" to the console.',
+      tasks: ['Include the stdio.h header', 'Write a main function', 'Use printf to print "Hello, CodeClimb!"'],
+      testCases: [{ input: 'None', output: 'Hello, CodeClimb!' }],
+      hints: ['Use the printf() function for output', 'Don\'t forget the newline character \\n']
+    }
   },
   2: {
     theory: {
@@ -53,7 +66,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What character ends most statements in C?', options: ['Colon :', 'Period .', 'Semicolon ;', 'Comma ,'], correctAnswer: 'Semicolon ;' },
       { question: 'What does return 0 mean in main()?', options: ['The program failed', 'The program ran successfully', 'The program should restart', 'Nothing'], correctAnswer: 'The program ran successfully' }
     ],
-    codingChallenge: { problem: 'Write a C program that prints your name and age on separate lines.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a C program that prints your name and age on separate lines.',
+      tasks: ['Create a main function with proper structure', 'Print your name on line 1', 'Print your age on line 2'],
+      testCases: [{ input: 'None', output: 'Alice\n25' }],
+      hints: ['Use two separate printf statements', 'Use \\n to create a new line']
+    }
   },
   3: {
     theory: {
@@ -66,7 +84,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What happens if you use a variable without declaring it?', options: ['It works fine', 'Compilation error', 'Runtime warning', 'It defaults to 0'], correctAnswer: 'Compilation error' },
       { question: 'Which symbol is used for assignment in C?', options: ['==', '=', ':=', '=>'], correctAnswer: '=' }
     ],
-    codingChallenge: { problem: 'Declare an integer variable called "score" with value 100 and print it.', input: 'None' }
+    codingChallenge: {
+      problem: 'Declare an integer variable called "score" with value 100 and print it.',
+      tasks: ['Declare an int variable named score', 'Assign the value 100', 'Print the variable using printf with %d'],
+      testCases: [{ input: 'None', output: '100' }],
+      hints: ['Use the %d format specifier for integers', 'Remember to declare the variable before using it']
+    }
   },
   4: {
     theory: {
@@ -79,7 +102,13 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'How many bytes does an int typically use?', options: ['1', '2', '4', '8'], correctAnswer: '4' },
       { question: 'Which type offers more precision: float or double?', options: ['float', 'double', 'They are the same', 'Neither'], correctAnswer: 'double' }
     ],
-    codingChallenge: { problem: 'Create variables of each basic type (int, float, double, char) and print their sizes using sizeof().', input: 'None' }
+    codingChallenge: {
+      problem: 'Create variables of each basic type (int, float, double, char) and print their sizes using sizeof().',
+      tasks: ['Declare one variable of each type', 'Use sizeof() to get the size of each type', 'Print each size using printf'],
+      constraints: ['Use all four basic types: int, float, double, char'],
+      testCases: [{ input: 'None', output: 'Size of int: 4 bytes\nSize of float: 4 bytes\nSize of double: 8 bytes\nSize of char: 1 byte' }],
+      hints: ['sizeof() returns the number of bytes a type uses', 'Use %lu format specifier for sizeof results']
+    }
   },
   5: {
     theory: {
@@ -92,7 +121,13 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What is the difference between const and #define?', options: ['const is type-checked, #define is not', 'They are identical', '#define uses memory, const does not', 'const is faster'], correctAnswer: 'const is type-checked, #define is not' },
       { question: 'Can you change the value of a const variable?', options: ['Yes, always', 'Only in main()', 'No, it causes a compile error', 'Only with a cast'], correctAnswer: 'No, it causes a compile error' }
     ],
-    codingChallenge: { problem: 'Define a constant PI using #define and calculate the circumference of a circle with radius 7 (formula: 2 * PI * r).', input: 'None' }
+    codingChallenge: {
+      problem: 'Define a constant PI using #define and calculate the circumference of a circle with radius 7.',
+      tasks: ['Define PI as 3.14159 using #define', 'Set radius to 7', 'Calculate circumference using 2 * PI * r', 'Print the result'],
+      constraints: ['Use #define for PI, not const', 'Formula: circumference = 2 * PI * radius'],
+      testCases: [{ input: 'None', output: 'Circumference: 43.98' }],
+      hints: ['#define is placed before the main function', 'Use %.2f to print two decimal places']
+    }
   },
   6: {
     theory: {
@@ -105,7 +140,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'Why do we use & in scanf?', options: ['To multiply', 'To get the address of the variable', 'To format output', 'To declare a pointer'], correctAnswer: 'To get the address of the variable' },
       { question: 'What does %f display?', options: ['Integer', 'String', 'Floating-point number', 'Character'], correctAnswer: 'Floating-point number' }
     ],
-    codingChallenge: { problem: 'Write a program that reads two integers from the user and prints their sum.', input: '5 3' }
+    codingChallenge: {
+      problem: 'Write a program that reads two integers from the user and prints their sum.',
+      tasks: ['Declare two integer variables', 'Read values using scanf', 'Calculate and print the sum'],
+      testCases: [{ input: '5 3', output: '8' }, { input: '10 20', output: '30' }],
+      hints: ['Use & before variable names in scanf', 'Use %d for reading and printing integers']
+    }
   },
   7: {
     theory: {
@@ -118,7 +158,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What does the % operator return?', options: ['Percentage', 'Quotient', 'Remainder', 'Power'], correctAnswer: 'Remainder' },
       { question: 'What is 10 % 3?', options: ['3', '1', '0', '10'], correctAnswer: '1' }
     ],
-    codingChallenge: { problem: 'Write a program that takes two integers and prints their sum, difference, product, quotient, and remainder.', input: '10 3' }
+    codingChallenge: {
+      problem: 'Write a program that takes two integers and prints their sum, difference, product, quotient, and remainder.',
+      tasks: ['Read two integers', 'Compute all five operations', 'Print each result on a separate line'],
+      testCases: [{ input: '10 3', output: 'Sum: 13\nDifference: 7\nProduct: 30\nQuotient: 3\nRemainder: 1' }],
+      hints: ['Use / for integer division and % for remainder', 'Integer division truncates the decimal part']
+    }
   },
   8: {
     theory: {
@@ -131,7 +176,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What is the result of (5 > 3) && (2 > 8)?', options: ['1', '0', 'true', 'error'], correctAnswer: '0' },
       { question: 'What does ! (NOT) operator do?', options: ['Multiplies', 'Reverses boolean value', 'Checks equality', 'Nothing'], correctAnswer: 'Reverses boolean value' }
     ],
-    codingChallenge: { problem: 'Write a program that checks if a number is between 1 and 100 (inclusive) using logical operators.', input: '50' }
+    codingChallenge: {
+      problem: 'Write a program that checks if a number is between 1 and 100 (inclusive) using logical operators.',
+      tasks: ['Read an integer from the user', 'Check if it is >= 1 AND <= 100', 'Print "In range" or "Out of range"'],
+      testCases: [{ input: '50', output: 'In range' }, { input: '150', output: 'Out of range' }, { input: '1', output: 'In range' }],
+      hints: ['Use the && (AND) operator to combine two conditions', 'Both conditions must be true for the number to be in range']
+    }
   },
   9: {
     theory: {
@@ -144,7 +194,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What is the result of (int)3.99?', options: ['4', '3', '3.99', 'Error'], correctAnswer: '3' },
       { question: 'When is explicit casting necessary?', options: ['Always', 'When you want to prevent data loss', 'When converting larger to smaller type', 'Never'], correctAnswer: 'When converting larger to smaller type' }
     ],
-    codingChallenge: { problem: 'Write a program that divides two integers (7 and 3) and prints the result as both integer and float using type casting.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a program that divides two integers (7 and 3) and prints the result as both integer and float using type casting.',
+      tasks: ['Declare two int variables with values 7 and 3', 'Print integer division result', 'Use explicit casting to print float division result'],
+      testCases: [{ input: 'None', output: 'Integer: 2\nFloat: 2.33' }],
+      hints: ['Cast one operand to float before dividing: (float)a / b', 'Use %.2f for float output']
+    }
   },
   10: {
     theory: {
@@ -157,7 +212,12 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
       { question: 'What happens if the if condition is 0?', options: ['Code executes', 'Code is skipped', 'Error occurs', 'Program exits'], correctAnswer: 'Code is skipped' },
       { question: 'Are curly braces required for single-statement if?', options: ['Yes, always', 'No, but recommended', 'Only in main()', 'Only for loops'], correctAnswer: 'No, but recommended' }
     ],
-    codingChallenge: { problem: 'Write a program that checks if a number is positive and prints "Positive" if it is.', input: '5' }
+    codingChallenge: {
+      problem: 'Write a program that checks if a number is positive and prints "Positive" if it is.',
+      tasks: ['Read an integer from the user', 'Use an if statement to check if it is greater than 0', 'Print "Positive" if the condition is true'],
+      testCases: [{ input: '5', output: 'Positive' }, { input: '-3', output: '' }],
+      hints: ['The if condition checks (number > 0)', 'No else is needed — just skip output if not positive']
+    }
   },
 };
 
@@ -176,7 +236,12 @@ const pythonContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | '
       { question: 'What defines code blocks in Python?', options: ['Curly braces', 'Parentheses', 'Indentation', 'Semicolons'], correctAnswer: 'Indentation' },
       { question: 'What function displays output in Python?', options: ['echo()', 'console.log()', 'printf()', 'print()'], correctAnswer: 'print()' }
     ],
-    codingChallenge: { problem: 'Write a Python program that prints "Hello, CodeClimb!" on the first line and your name on the second line.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a Python program that prints "Hello, CodeClimb!" on the first line and your name on the second line.',
+      tasks: ['Use the print() function twice', 'First print "Hello, CodeClimb!"', 'Then print your name'],
+      testCases: [{ input: 'None', output: 'Hello, CodeClimb!\nAlice' }],
+      hints: ['Each print() automatically adds a newline', 'Strings go inside quotes']
+    }
   },
   2: {
     theory: {
@@ -189,7 +254,12 @@ const pythonContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | '
       { question: 'Which is a valid variable name?', options: ['2name', 'my-var', '_count', 'class'], correctAnswer: '_count' },
       { question: 'What does type(x) return?', options: ['The value of x', 'The data type of x', 'The size of x', 'An error'], correctAnswer: 'The data type of x' }
     ],
-    codingChallenge: { problem: 'Create variables for your name (string), age (int), and height (float), then print all three.', input: 'None' }
+    codingChallenge: {
+      problem: 'Create variables for your name (string), age (int), and height (float), then print all three.',
+      tasks: ['Create a string variable for name', 'Create an int variable for age', 'Create a float variable for height', 'Print all three variables'],
+      testCases: [{ input: 'None', output: 'Alice\n25\n5.9' }],
+      hints: ['Python infers the type from the assigned value', 'Use print() for each variable']
+    }
   },
   3: {
     theory: {
@@ -202,7 +272,12 @@ const pythonContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | '
       { question: 'What does int("42") return?', options: ['"42"', '42', 'Error', 'None'], correctAnswer: '42' },
       { question: 'What is None in Python?', options: ['Zero', 'Empty string', 'Absence of value', 'False'], correctAnswer: 'Absence of value' }
     ],
-    codingChallenge: { problem: 'Convert the string "25" to an integer, add 10, and print the result.', input: 'None' }
+    codingChallenge: {
+      problem: 'Convert the string "25" to an integer, add 10, and print the result.',
+      tasks: ['Store "25" in a variable', 'Convert it to int using int()', 'Add 10 to the result', 'Print the final value'],
+      testCases: [{ input: 'None', output: '35' }],
+      hints: ['int() converts a string to an integer', 'You can do arithmetic after conversion']
+    }
   },
 };
 
@@ -221,7 +296,12 @@ const jsContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diff
       { question: 'What method logs to the browser console?', options: ['print()', 'console.log()', 'System.out.println()', 'echo()'], correctAnswer: 'console.log()' },
       { question: 'Where does JavaScript primarily run?', options: ['Only on servers', 'In web browsers', 'Only in terminals', 'In databases'], correctAnswer: 'In web browsers' }
     ],
-    codingChallenge: { problem: 'Write JavaScript code that declares a variable called "greeting" with value "Hello, CodeClimb!" and logs it to the console.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write JavaScript code that declares a variable called "greeting" with value "Hello, CodeClimb!" and logs it to the console.',
+      tasks: ['Declare a variable using let or const', 'Assign "Hello, CodeClimb!" as its value', 'Log the variable using console.log()'],
+      testCases: [{ input: 'None', output: 'Hello, CodeClimb!' }],
+      hints: ['Use const if the value won\'t change', 'console.log() prints to the browser console']
+    }
   },
   2: {
     theory: {
@@ -234,7 +314,12 @@ const jsContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diff
       { question: 'Can you reassign a let variable?', options: ['Yes', 'No', 'Only numbers', 'Only strings'], correctAnswer: 'Yes' },
       { question: 'Why is var generally avoided?', options: ['It is slower', 'It has confusing scoping', 'It cannot hold strings', 'It is deprecated'], correctAnswer: 'It has confusing scoping' }
     ],
-    codingChallenge: { problem: 'Declare a const for your birth year, a let for your current age, and log both.', input: 'None' }
+    codingChallenge: {
+      problem: 'Declare a const for your birth year, a let for your current age, and log both.',
+      tasks: ['Use const for birth year', 'Use let for current age', 'Log both values using console.log()'],
+      testCases: [{ input: 'None', output: '2000\n25' }],
+      hints: ['const cannot be reassigned after declaration', 'let allows reassignment if needed later']
+    }
   },
 };
 
@@ -253,7 +338,12 @@ const javaContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'di
       { question: 'What does JVM stand for?', options: ['Java Very Modern', 'Java Virtual Machine', 'Java Version Manager', 'Java Variable Memory'], correctAnswer: 'Java Virtual Machine' },
       { question: 'What is the correct method to print output in Java?', options: ['print()', 'console.log()', 'System.out.println()', 'printf()'], correctAnswer: 'System.out.println()' }
     ],
-    codingChallenge: { problem: 'Write a Java program that prints "Hello, CodeClimb!" to the console.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a Java program that prints "Hello, CodeClimb!" to the console.',
+      tasks: ['Create a class with a main method', 'Use System.out.println() to print the message'],
+      testCases: [{ input: 'None', output: 'Hello, CodeClimb!' }],
+      hints: ['The class name must match the file name', 'main method signature: public static void main(String[] args)']
+    }
   },
 };
 
@@ -272,7 +362,12 @@ const cppContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'dif
       { question: 'What header is needed for cout?', options: ['<stdio.h>', '<iostream>', '<conio.h>', '<string>'], correctAnswer: '<iostream>' },
       { question: 'What does endl do?', options: ['Ends the program', 'Inserts a new line', 'Clears the screen', 'Pauses output'], correctAnswer: 'Inserts a new line' }
     ],
-    codingChallenge: { problem: 'Write a C++ program that prints "Hello, CodeClimb!" using cout.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write a C++ program that prints "Hello, CodeClimb!" using cout.',
+      tasks: ['Include the iostream header', 'Use cout with << to print the message', 'End with endl for a newline'],
+      testCases: [{ input: 'None', output: 'Hello, CodeClimb!' }],
+      hints: ['cout is part of the std namespace', 'Use << to chain output']
+    }
   },
 };
 
@@ -291,7 +386,12 @@ const htmlContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'di
       { question: 'Which tag defines the largest heading?', options: ['<heading>', '<h6>', '<h1>', '<head>'], correctAnswer: '<h1>' },
       { question: 'What does <!DOCTYPE html> declare?', options: ['A comment', 'The document is HTML5', 'A variable', 'A style rule'], correctAnswer: 'The document is HTML5' }
     ],
-    codingChallenge: { problem: 'Create a basic HTML page with a title "My Page" and an h1 heading that says "Welcome".', input: 'None' }
+    codingChallenge: {
+      problem: 'Create a basic HTML page with a title "My Page" and an h1 heading that says "Welcome".',
+      tasks: ['Add the DOCTYPE declaration', 'Create html, head, and body tags', 'Add a title tag with "My Page"', 'Add an h1 tag with "Welcome"'],
+      testCases: [{ input: 'None', output: 'Page displays "Welcome" as a heading' }],
+      hints: ['Every HTML page needs html, head, and body tags', 'The title tag goes inside head']
+    }
   },
 };
 
@@ -310,7 +410,12 @@ const cssContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'dif
       { question: 'Which method of applying CSS is most recommended?', options: ['Inline styles', 'Internal <style> tag', 'External stylesheet', 'JavaScript'], correctAnswer: 'External stylesheet' },
       { question: 'What separates CSS from HTML?', options: ['CSS handles structure, HTML handles style', 'CSS handles style, HTML handles structure', 'They do the same thing', 'CSS is a programming language'], correctAnswer: 'CSS handles style, HTML handles structure' }
     ],
-    codingChallenge: { problem: 'Write CSS to make all h1 elements blue and centered.', input: 'None' }
+    codingChallenge: {
+      problem: 'Write CSS to make all h1 elements blue and centered.',
+      tasks: ['Select all h1 elements', 'Set the color property to blue', 'Set text-align to center'],
+      testCases: [{ input: 'None', output: 'All h1 headings appear blue and centered' }],
+      hints: ['Use the element selector h1 { }', 'color sets text color, text-align sets alignment']
+    }
   },
 };
 
@@ -373,7 +478,18 @@ function generateFallbackContent(language: string, topic: string, level: number,
     ],
     codingChallenge: {
       problem: `Write a ${lang} program that demonstrates the use of ${topic}.`,
-      input: 'Varies based on implementation'
+      tasks: [
+        `Implement a working example of ${topic}`,
+        'Include proper input handling if required',
+        'Print or display the output clearly'
+      ],
+      constraints: [`Use only ${topic}-related concepts`, `Difficulty: ${difficulty}`],
+      testCases: [{ input: 'Varies based on implementation', output: 'Depends on your approach' }],
+      hints: [
+        `Review the theory section for ${topic} syntax`,
+        `Think about where ${topic} is commonly used in real programs`,
+        'Start simple, then add complexity'
+      ]
     }
   };
 }
