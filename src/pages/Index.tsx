@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Code, TrendingUp, Award, Users } from 'lucide-react';
+import { Code, TrendingUp, Award, Users, Sparkles } from 'lucide-react';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -16,25 +16,27 @@ const Index = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen cute-gradient">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <header className="flex justify-between items-center mb-16">
+        <header className="flex justify-between items-center mb-16 animate-fade-in">
           <div className="flex items-center space-x-2">
-            <Code className="h-8 w-8 text-blue-400" />
-            <h1 className="text-2xl font-bold text-white">CodeClimb</h1>
+            <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
+              <Code className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-foreground">CodeClimb</h1>
           </div>
-          <div className="space-x-4">
+          <div className="space-x-3">
             <Button 
               variant="outline" 
               onClick={() => navigate('/login')}
-              className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
+              className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10"
             >
               Login
             </Button>
             <Button 
               onClick={() => navigate('/signup')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute"
             >
               Sign Up
             </Button>
@@ -42,50 +44,60 @@ const Index = () => {
         </header>
 
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold text-white mb-6">
+        <div className="text-center mb-20 animate-fade-in">
+          <div className="inline-flex items-center gap-2 bg-cute-pink/30 text-secondary-foreground rounded-full px-4 py-1.5 text-sm font-semibold mb-6">
+            <Sparkles className="h-4 w-4" />
+            Learn to code the fun way
+          </div>
+          <h2 className="text-5xl md:text-6xl font-extrabold text-foreground mb-6 leading-tight">
             Master Programming
-            <span className="text-blue-400"> Step by Step</span>
+            <span className="text-primary"> Step by Step</span>
           </h2>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
             Learn 7 programming languages through 100 progressive levels each. 
-            Theory, practice, and mastery - all in one platform.
+            Theory, practice, and mastery — all in one adorable platform ✨
           </p>
           <Button 
             size="lg" 
             onClick={() => navigate('/signup')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg"
+            className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-5 text-lg shadow-cute-lg"
           >
-            Start Your Journey
+            Start Your Journey 🚀
           </Button>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 text-center">
-            <TrendingUp className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Progressive Learning</h3>
-            <p className="text-gray-300">100 levels per language, each building on the previous</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 text-center">
-            <Award className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Interactive Exams</h3>
-            <p className="text-gray-300">Test your knowledge with hands-on coding challenges</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 text-center">
-            <Users className="h-12 w-12 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Track Progress</h3>
-            <p className="text-gray-300">Monitor your advancement across all languages</p>
-          </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {[
+            { icon: TrendingUp, color: 'bg-cute-lavender/20 text-primary', title: 'Progressive Learning', desc: '100 levels per language, each building on the previous' },
+            { icon: Award, color: 'bg-cute-pink/20 text-secondary-foreground', title: 'Interactive Quizzes', desc: 'Test your knowledge with guided coding challenges' },
+            { icon: Users, color: 'bg-cute-mint/20 text-accent-foreground', title: 'Track Progress', desc: 'Monitor your advancement across all languages' },
+          ].map((f) => (
+            <div key={f.title} className="cute-card p-8 text-center hover:shadow-cute-hover transition-all duration-300 hover:-translate-y-1">
+              <div className={`w-14 h-14 rounded-2xl ${f.color} flex items-center justify-center mx-auto mb-4`}>
+                <f.icon className="h-7 w-7" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground mb-2">{f.title}</h3>
+              <p className="text-muted-foreground">{f.desc}</p>
+            </div>
+          ))}
         </div>
 
         {/* Languages Section */}
-        <div className="text-center mb-8">
-          <h3 className="text-3xl font-bold text-white mb-8">Supported Languages</h3>
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-extrabold text-foreground mb-8">Supported Languages</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            {['C', 'C++', 'Java', 'Python', 'HTML', 'CSS', 'JavaScript'].map((lang) => (
-              <div key={lang} className="bg-white/10 backdrop-blur-lg rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-white">{lang}</div>
+            {[
+              { name: 'C', bg: 'bg-cute-sky/30' },
+              { name: 'C++', bg: 'bg-cute-lavender/30' },
+              { name: 'Java', bg: 'bg-cute-peach/30' },
+              { name: 'Python', bg: 'bg-cute-mint/30' },
+              { name: 'HTML', bg: 'bg-cute-yellow/30' },
+              { name: 'CSS', bg: 'bg-cute-pink/30' },
+              { name: 'JavaScript', bg: 'bg-cute-lavender/20' },
+            ].map((lang) => (
+              <div key={lang.name} className={`${lang.bg} rounded-2xl p-5 text-center hover:shadow-cute transition-all duration-200 hover:-translate-y-1 cursor-default`}>
+                <div className="text-xl font-extrabold text-foreground">{lang.name}</div>
               </div>
             ))}
           </div>

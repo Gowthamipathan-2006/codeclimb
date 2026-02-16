@@ -23,11 +23,7 @@ const Signup = () => {
     setLoading(true);
 
     if (password.length < 6) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive"
-      });
+      toast({ title: "Password Too Short", description: "Password must be at least 6 characters long.", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -35,82 +31,73 @@ const Signup = () => {
     try {
       const success = await signup(userId, email, password);
       if (success) {
-        toast({
-          title: "Account Created!",
-          description: "Your account has been created successfully. Please log in.",
-        });
+        toast({ title: "Account Created! 🎉", description: "Your account has been created successfully. Please log in." });
         navigate('/login');
       } else {
-        toast({
-          title: "Signup Failed",
-          description: "An account with this email already exists.",
-          variant: "destructive"
-        });
+        toast({ title: "Signup Failed", description: "An account with this email already exists.", variant: "destructive" });
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "An error occurred. Please try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
+    <div className="min-h-screen cute-gradient flex items-center justify-center p-4">
+      <Card className="w-full max-w-md cute-card border-0 animate-fade-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Code className="h-12 w-12 text-blue-400" />
+            <div className="w-16 h-16 rounded-3xl bg-cute-mint/20 flex items-center justify-center">
+              <Code className="h-8 w-8 text-primary" />
+            </div>
           </div>
-          <CardTitle className="text-2xl text-white">Join CodeClimb</CardTitle>
-          <CardDescription className="text-gray-300">
+          <CardTitle className="text-2xl font-extrabold text-foreground">Join CodeClimb ✨</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Create your account to start learning
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="userId" className="text-white">User ID</Label>
+              <Label htmlFor="userId" className="text-foreground font-semibold">User ID</Label>
               <Input
                 id="userId"
                 type="text"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="Choose a unique user ID"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email" className="text-foreground font-semibold">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="Enter your email"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Password</Label>
+              <Label htmlFor="password" className="text-foreground font-semibold">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="At least 6 characters"
               />
             </div>
             <Button 
               type="submit" 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute"
               disabled={loading}
             >
               <UserPlus className="h-4 w-4 mr-2" />
@@ -118,9 +105,9 @@ const Signup = () => {
             </Button>
           </form>
           <div className="mt-6 text-center">
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" className="text-blue-400 hover:text-blue-300 underline">
+              <Link to="/login" className="text-primary hover:text-primary/80 font-semibold">
                 Sign in here
               </Link>
             </p>
