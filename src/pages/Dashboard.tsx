@@ -10,13 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Code, LogOut, Trophy, BookOpen } from 'lucide-react';
 
 const languages = [
-  { name: 'C', color: 'bg-blue-500', description: 'Master the fundamentals of programming' },
-  { name: 'C++', color: 'bg-purple-500', description: 'Object-oriented programming excellence' },
-  { name: 'Java', color: 'bg-red-500', description: 'Enterprise-grade application development' },
-  { name: 'Python', color: 'bg-green-500', description: 'Versatile and beginner-friendly' },
-  { name: 'HTML', color: 'bg-orange-500', description: 'Structure the web with markup' },
-  { name: 'CSS', color: 'bg-pink-500', description: 'Style and design beautiful interfaces' },
-  { name: 'JavaScript', color: 'bg-yellow-500', description: 'Dynamic web development' },
+  { name: 'C', bg: 'bg-cute-sky/20', accent: 'text-accent-foreground', description: 'Master the fundamentals of programming' },
+  { name: 'C++', bg: 'bg-cute-lavender/20', accent: 'text-primary', description: 'Object-oriented programming excellence' },
+  { name: 'Java', bg: 'bg-cute-peach/20', accent: 'text-destructive', description: 'Enterprise-grade application development' },
+  { name: 'Python', bg: 'bg-cute-mint/20', accent: 'text-accent-foreground', description: 'Versatile and beginner-friendly' },
+  { name: 'HTML', bg: 'bg-cute-yellow/20', accent: 'text-secondary-foreground', description: 'Structure the web with markup' },
+  { name: 'CSS', bg: 'bg-cute-pink/20', accent: 'text-secondary-foreground', description: 'Style and design beautiful interfaces' },
+  { name: 'JavaScript', bg: 'bg-cute-yellow/30', accent: 'text-foreground', description: 'Dynamic web development' },
 ];
 
 const Dashboard = () => {
@@ -46,21 +46,23 @@ const Dashboard = () => {
   const overallProgress = (totalCompleted / totalLevels) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen cute-gradient">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 animate-fade-in">
           <div className="flex items-center space-x-3">
-            <Code className="h-8 w-8 text-blue-400" />
+            <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
+              <Code className="h-6 w-6 text-primary" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">CodeClimb Dashboard</h1>
-              <p className="text-gray-300">Welcome back, {user.userId}!</p>
+              <h1 className="text-2xl font-extrabold text-foreground">CodeClimb</h1>
+              <p className="text-muted-foreground text-sm">Welcome back, {user.userId} 👋</p>
             </div>
           </div>
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="border-red-400 text-red-400 hover:bg-red-400 hover:text-white"
+            className="cute-btn rounded-full border-destructive/30 text-destructive hover:bg-destructive/10"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Logout
@@ -68,19 +70,21 @@ const Dashboard = () => {
         </header>
 
         {/* Overall Progress */}
-        <Card className="mb-8 bg-white/10 backdrop-blur-lg border-white/20">
+        <Card className="mb-8 cute-card border-0 animate-fade-in">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Trophy className="h-5 w-5 mr-2 text-yellow-400" />
+            <CardTitle className="text-foreground flex items-center font-extrabold">
+              <div className="w-8 h-8 rounded-xl bg-cute-yellow/30 flex items-center justify-center mr-3">
+                <Trophy className="h-4 w-4 text-secondary-foreground" />
+              </div>
               Overall Progress
             </CardTitle>
-            <CardDescription className="text-gray-300">
-              {totalCompleted} out of {totalLevels} levels completed
+            <CardDescription className="text-muted-foreground">
+              {totalCompleted} out of {totalLevels} levels completed ✨
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Progress value={overallProgress} className="h-3" />
-            <p className="text-sm text-gray-300 mt-2">{overallProgress.toFixed(1)}% Complete</p>
+            <Progress value={overallProgress} className="h-3 bg-muted" />
+            <p className="text-sm text-muted-foreground mt-2">{overallProgress.toFixed(1)}% Complete</p>
           </CardContent>
         </Card>
 
@@ -93,30 +97,34 @@ const Dashboard = () => {
             return (
               <Card
                 key={language.name}
-                className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/20 transition-all duration-300 cursor-pointer transform hover:scale-105"
+                className="cute-card border-0 hover:shadow-cute-hover transition-all duration-300 cursor-pointer hover:-translate-y-1 animate-fade-in"
                 onClick={() => handleLanguageClick(language.name)}
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-white flex items-center">
-                      <div className={`w-4 h-4 rounded-full ${language.color} mr-3`}></div>
+                    <CardTitle className="text-foreground flex items-center font-bold">
+                      <div className={`w-8 h-8 rounded-xl ${language.bg} flex items-center justify-center mr-3`}>
+                        <span className={`text-xs font-extrabold ${language.accent}`}>
+                          {language.name.charAt(0)}
+                        </span>
+                      </div>
                       {language.name}
                     </CardTitle>
-                    <Badge variant="secondary" className="bg-white/20 text-white">
+                    <Badge className="bg-muted text-muted-foreground border-0 rounded-full font-semibold">
                       {completed}/100
                     </Badge>
                   </div>
-                  <CardDescription className="text-gray-300">
+                  <CardDescription className="text-muted-foreground">
                     {language.description}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Progress value={progress} className="h-2 mb-3" />
+                  <Progress value={progress} className="h-2 mb-3 bg-muted" />
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300">{progress.toFixed(0)}% Complete</span>
+                    <span className="text-muted-foreground">{progress.toFixed(0)}% Complete</span>
                     <Button
                       size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-cute"
                     >
                       <BookOpen className="h-3 w-3 mr-1" />
                       Continue

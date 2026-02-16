@@ -24,70 +24,61 @@ const Login = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in to CodeClimb.",
-        });
+        toast({ title: "Welcome back! 🎉", description: "Successfully logged in to CodeClimb." });
         navigate('/dashboard');
       } else {
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
-          variant: "destructive"
-        });
+        toast({ title: "Login Failed", description: "Invalid email or password. Please try again.", variant: "destructive" });
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "An error occurred. Please try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
+    <div className="min-h-screen cute-gradient flex items-center justify-center p-4">
+      <Card className="w-full max-w-md cute-card border-0 animate-fade-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Code className="h-12 w-12 text-blue-400" />
+            <div className="w-16 h-16 rounded-3xl bg-primary/15 flex items-center justify-center">
+              <Code className="h-8 w-8 text-primary" />
+            </div>
           </div>
-          <CardTitle className="text-2xl text-white">Welcome Back</CardTitle>
-          <CardDescription className="text-gray-300">
+          <CardTitle className="text-2xl font-extrabold text-foreground">Welcome Back 👋</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Sign in to continue your coding journey
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email" className="text-foreground font-semibold">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="Enter your email"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Password</Label>
+              <Label htmlFor="password" className="text-foreground font-semibold">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="Enter your password"
               />
             </div>
             <Button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute"
               disabled={loading}
             >
               <LogIn className="h-4 w-4 mr-2" />
@@ -95,9 +86,9 @@ const Login = () => {
             </Button>
           </form>
           <div className="mt-6 text-center">
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Don't have an account?{' '}
-              <Link to="/signup" className="text-blue-400 hover:text-blue-300 underline">
+              <Link to="/signup" className="text-primary hover:text-primary/80 font-semibold">
                 Sign up here
               </Link>
             </p>
