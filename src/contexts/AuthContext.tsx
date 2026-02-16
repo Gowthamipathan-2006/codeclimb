@@ -1,18 +1,16 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  userId: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  displayName: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (userId: string, email: string, password: string) => Promise<boolean>;
+  signup: (displayName: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,58 +29,77 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('codeclimb_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        // Fetch display name from profiles
+        setTimeout(async () => {
+          const { data } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          setDisplayName(data?.display_name ?? session.user.email ?? null);
+        }, 0);
+      } else {
+        setDisplayName(null);
+      }
+      setLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            setDisplayName(data?.display_name ?? session.user.email ?? null);
+          });
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signup = async (userId: string, email: string, password: string): Promise<boolean> => {
-    if (password.length < 6) {
-      return false;
-    }
-
-    const users = JSON.parse(localStorage.getItem('codeclimb_users') || '[]');
-    
-    if (users.find((u: any) => u.email === email)) {
-      return false;
-    }
-
-    const newUser = { id: Date.now().toString(), userId, email, password };
-    users.push(newUser);
-    localStorage.setItem('codeclimb_users', JSON.stringify(users));
-    
-    return true;
+  const signup = async (displayName: string, email: string, password: string): Promise<boolean> => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName }
+      }
+    });
+    return !error;
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('codeclimb_users') || '[]');
-    const foundUser = users.find((u: any) => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const userToSet = { id: foundUser.id, email: foundUser.email, userId: foundUser.userId };
-      setUser(userToSet);
-      localStorage.setItem('codeclimb_user', JSON.stringify(userToSet));
-      return true;
-    }
-    
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('codeclimb_user');
+    setDisplayName(null);
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      displayName,
       login,
       signup,
       logout,
-      isAuthenticated: !!user
+      isAuthenticated: !!user,
+      loading
     }}>
       {children}
     </AuthContext.Provider>

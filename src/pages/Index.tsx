@@ -54,7 +54,7 @@ const Index = () => {
             <span className="text-primary"> Step by Step</span>
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Learn 7 programming languages through 100 progressive levels each. 
+            Learn 7 programming languages through 30 progressive levels each. 
             Theory, practice, and mastery — all in one adorable platform ✨
           </p>
           <Button 
@@ -69,7 +69,7 @@ const Index = () => {
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-20">
           {[
-            { icon: TrendingUp, color: 'bg-cute-lavender/20 text-primary', title: 'Progressive Learning', desc: '100 levels per language, each building on the previous' },
+            { icon: TrendingUp, color: 'bg-cute-lavender/20 text-primary', title: 'Progressive Learning', desc: '30 levels per language, each building on the previous' },
             { icon: Award, color: 'bg-cute-pink/20 text-secondary-foreground', title: 'Interactive Quizzes', desc: 'Test your knowledge with guided coding challenges' },
             { icon: Users, color: 'bg-cute-mint/20 text-accent-foreground', title: 'Track Progress', desc: 'Monitor your advancement across all languages' },
           ].map((f) => (

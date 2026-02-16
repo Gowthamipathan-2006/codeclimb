@@ -9,6 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Code, LogOut, Trophy, BookOpen } from 'lucide-react';
 
+const MAX_LEVELS = 30;
+
 const languages = [
   { name: 'C', bg: 'bg-cute-sky/20', accent: 'text-accent-foreground', description: 'Master the fundamentals of programming' },
   { name: 'C++', bg: 'bg-cute-lavender/20', accent: 'text-primary', description: 'Object-oriented programming excellence' },
@@ -20,18 +22,18 @@ const languages = [
 ];
 
 const Dashboard = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, displayName, logout, isAuthenticated, loading: authLoading } = useAuth();
   const { getCompletedLevels } = useProgress();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -39,10 +41,10 @@ const Dashboard = () => {
     navigate(`/language/${language.toLowerCase()}/1`);
   };
 
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   const totalCompleted = languages.reduce((sum, lang) => sum + getCompletedLevels(lang.name), 0);
-  const totalLevels = languages.length * 100;
+  const totalLevels = languages.length * MAX_LEVELS;
   const overallProgress = (totalCompleted / totalLevels) * 100;
 
   return (
@@ -56,7 +58,7 @@ const Dashboard = () => {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-foreground">CodeClimb</h1>
-              <p className="text-muted-foreground text-sm">Welcome back, {user.userId} 👋</p>
+              <p className="text-muted-foreground text-sm">Welcome back, {displayName} 👋</p>
             </div>
           </div>
           <Button
@@ -92,7 +94,7 @@ const Dashboard = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {languages.map((language) => {
             const completed = getCompletedLevels(language.name);
-            const progress = (completed / 100) * 100;
+            const progress = (completed / MAX_LEVELS) * 100;
             
             return (
               <Card
@@ -111,7 +113,7 @@ const Dashboard = () => {
                       {language.name}
                     </CardTitle>
                     <Badge className="bg-muted text-muted-foreground border-0 rounded-full font-semibold">
-                      {completed}/100
+                      {completed}/{MAX_LEVELS}
                     </Badge>
                   </div>
                   <CardDescription className="text-muted-foreground">

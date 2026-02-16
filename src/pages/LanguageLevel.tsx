@@ -12,9 +12,11 @@ import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent } from '@/utils/levelContent';
 
+const MAX_LEVELS = 30;
+
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { completeLevel, isLevelUnlocked } = useProgress();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,6 +48,7 @@ const LanguageLevel = () => {
   }, [language, level]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -54,7 +57,7 @@ const LanguageLevel = () => {
       toast({ title: "Level Locked 🔒", description: "Complete the previous level to unlock this one.", variant: "destructive" });
       navigate('/dashboard');
     }
-  }, [isAuthenticated, language, currentLevel, isLevelUnlocked, navigate, toast]);
+  }, [isAuthenticated, authLoading, language, currentLevel, isLevelUnlocked, navigate, toast]);
 
   const currentQuiz = levelContent.quiz[currentQuizIndex];
 
@@ -82,9 +85,7 @@ const LanguageLevel = () => {
       const allCorrect = quizResults.every((r) => r === true);
       if (allCorrect) {
         setAllQuizPassed(true);
-        completeLevel(language || '', currentLevel);
         toast({ title: "🎉 Quiz Complete!", description: "Moving to the coding challenge..." });
-        // Auto-switch to coding challenge after a brief delay
         setTimeout(() => setCurrentSection('challenge'), 1500);
       } else {
         toast({ title: "Some answers were wrong", description: "Review and retry the incorrect ones.", variant: "destructive" });
@@ -101,7 +102,7 @@ const LanguageLevel = () => {
   };
 
   const handleNextLevel = () => {
-    if (currentLevel < 100) {
+    if (currentLevel < MAX_LEVELS) {
       navigate(`/language/${language}/${currentLevel + 1}`);
     } else {
       navigate('/dashboard');
@@ -123,11 +124,21 @@ const LanguageLevel = () => {
     }
     setIsRunning(true);
     setCodeOutput('');
-    // Simulate execution
     setTimeout(() => {
       setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n> Output:\n  [Your program output would appear here]\n\n✨ Code executed successfully!`);
       setIsRunning(false);
     }, 1200);
+  };
+
+  const handleSubmitCode = async () => {
+    if (!userCode.trim()) {
+      toast({ title: "Empty Editor", description: "Write some code before submitting.", variant: "destructive" });
+      return;
+    }
+    // Mark level complete in database
+    await completeLevel(language || '', currentLevel);
+    toast({ title: "🎉 Level Complete!", description: `Level ${currentLevel} marked as complete!` });
+    setCodeOutput(prev => prev + '\n\n✅ Level completed! You can now proceed to the next level.');
   };
 
   const handleClearCode = () => {
@@ -148,6 +159,8 @@ const LanguageLevel = () => {
     }
   };
 
+  if (authLoading) return null;
+
   return (
     <div className="min-h-screen cute-gradient">
       <div className="container mx-auto px-4 py-8">
@@ -167,7 +180,7 @@ const LanguageLevel = () => {
             </Badge>
           </div>
           <Badge className="bg-cute-pink/20 text-secondary-foreground border-0 rounded-full font-bold">
-            {currentLevel}/100
+            {currentLevel}/{MAX_LEVELS}
           </Badge>
         </div>
 
@@ -322,7 +335,6 @@ const LanguageLevel = () => {
         {/* CODING CHALLENGE SECTION */}
         {currentSection === 'challenge' && levelContent.codingChallenge && (
           <div className="space-y-6 animate-fade-in">
-            {/* Problem + Info Row */}
             <div className="grid lg:grid-cols-5 gap-6">
               {/* Left: Problem & Info */}
               <div className="lg:col-span-2 space-y-4">
@@ -411,7 +423,6 @@ const LanguageLevel = () => {
 
               {/* Right: Code Editor + Output */}
               <div className="lg:col-span-3 space-y-4">
-                {/* Editor Card */}
                 <Card className="cute-card border-0 overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3 bg-foreground/[0.03] border-b border-border/50">
                     <div className="flex items-center gap-2">
@@ -454,10 +465,19 @@ const LanguageLevel = () => {
                       {isRunning ? 'Running...' : 'Run Code'}
                     </Button>
                     <Button
-                      onClick={handleNextLevel}
+                      onClick={handleSubmitCode}
+                      disabled={!userCode.trim()}
                       className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute text-xs h-8 px-4"
                     >
-                      {currentLevel < 100 ? 'Next Level' : 'Dashboard'}
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Submit Solution
+                    </Button>
+                    <Button
+                      onClick={handleNextLevel}
+                      variant="outline"
+                      className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-8 px-4"
+                    >
+                      {currentLevel < MAX_LEVELS ? 'Next Level' : 'Dashboard'}
                       <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                     <span className="text-muted-foreground text-[10px] ml-auto">
