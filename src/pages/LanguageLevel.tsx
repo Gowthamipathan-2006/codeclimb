@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent } from '@/utils/levelContent';
 
@@ -18,11 +18,13 @@ const LanguageLevel = () => {
   const { completeLevel, isLevelUnlocked } = useProgress();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [currentSection, setCurrentSection] = useState<'theory' | 'exam'>('theory');
+
+  const [currentSection, setCurrentSection] = useState<'theory' | 'quiz' | 'challenge'>('theory');
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
-  const [examCompleted, setExamCompleted] = useState(false);
+  const [quizResults, setQuizResults] = useState<(boolean | null)[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [allQuizPassed, setAllQuizPassed] = useState(false);
 
   const currentLevel = parseInt(level || '1');
   const levelContent = generateLevelContent(language || '', currentLevel);
@@ -30,9 +32,11 @@ const LanguageLevel = () => {
   // Reset state when level or language changes
   useEffect(() => {
     setCurrentSection('theory');
+    setCurrentQuizIndex(0);
     setSelectedAnswer('');
-    setExamCompleted(false);
+    setQuizResults([]);
     setShowResult(false);
+    setAllQuizPassed(false);
   }, [language, level]);
 
   useEffect(() => {
@@ -40,44 +44,55 @@ const LanguageLevel = () => {
       navigate('/login');
       return;
     }
-
     if (!isLevelUnlocked(language || '', currentLevel)) {
-      toast({
-        title: "Level Locked",
-        description: "Complete the previous level to unlock this one.",
-        variant: "destructive"
-      });
+      toast({ title: "Level Locked", description: "Complete the previous level to unlock this one.", variant: "destructive" });
       navigate('/dashboard');
     }
   }, [isAuthenticated, language, currentLevel, isLevelUnlocked, navigate, toast]);
 
-  const handleExamSubmit = () => {
+  const currentQuiz = levelContent.quiz[currentQuizIndex];
+
+  const handleQuizSubmit = () => {
     if (!selectedAnswer) {
-      toast({
-        title: "Please select an answer",
-        description: "Choose an option before submitting.",
-        variant: "destructive"
-      });
+      toast({ title: "Please select an answer", description: "Choose an option before submitting.", variant: "destructive" });
       return;
     }
 
-    const isCorrect = selectedAnswer === levelContent.exam.correctAnswer;
+    const isCorrect = selectedAnswer === currentQuiz.correctAnswer;
+    const newResults = [...quizResults];
+    newResults[currentQuizIndex] = isCorrect;
+    setQuizResults(newResults);
     setShowResult(true);
-    
-    if (isCorrect) {
-      setExamCompleted(true);
-      completeLevel(language || '', currentLevel);
-      toast({
-        title: "Congratulations!",
-        description: "Level completed successfully!",
-      });
-    } else {
-      toast({
-        title: "Incorrect Answer",
-        description: "Try again! Review the theory section if needed.",
-        variant: "destructive"
-      });
+
+    if (!isCorrect) {
+      toast({ title: "Incorrect Answer", description: "Try again! Review the theory if needed.", variant: "destructive" });
     }
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuizIndex < levelContent.quiz.length - 1) {
+      setCurrentQuizIndex(currentQuizIndex + 1);
+      setSelectedAnswer('');
+      setShowResult(false);
+    } else {
+      // All questions answered — check if all correct
+      const allCorrect = quizResults.every((r) => r === true);
+      if (allCorrect) {
+        setAllQuizPassed(true);
+        completeLevel(language || '', currentLevel);
+        toast({ title: "🎉 All Questions Correct!", description: "Level completed! You can proceed." });
+      } else {
+        toast({ title: "Some answers were wrong", description: "Review and retry the incorrect ones.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleRetryQuiz = () => {
+    setCurrentQuizIndex(0);
+    setSelectedAnswer('');
+    setQuizResults([]);
+    setShowResult(false);
+    setAllQuizPassed(false);
   };
 
   const handleNextLevel = () => {
@@ -96,28 +111,23 @@ const LanguageLevel = () => {
     }
   };
 
-  if (!levelContent) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="outline"
-            onClick={goBack}
-            className="border-white/20 text-white hover:bg-white/10"
-          >
+          <Button variant="outline" onClick={goBack} className="border-white/20 text-white hover:bg-white/10">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white capitalize">
-              {language} - Level {currentLevel}
+              {language} – Level {currentLevel}
             </h1>
             <p className="text-gray-300">{levelContent.title}</p>
+            <Badge variant="secondary" className="mt-1 bg-white/10 text-gray-300">
+              {levelContent.difficulty}
+            </Badge>
           </div>
           <Badge variant="secondary" className="bg-white/20 text-white">
             {currentLevel}/100
@@ -125,140 +135,192 @@ const LanguageLevel = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex mb-8 bg-white/10 backdrop-blur-lg rounded-lg p-2">
-          <Button
-            variant={currentSection === 'theory' ? 'default' : 'ghost'}
-            onClick={() => setCurrentSection('theory')}
-            className={`flex-1 ${currentSection === 'theory' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white'}`}
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            Theory
-          </Button>
-          <Button
-            variant={currentSection === 'exam' ? 'default' : 'ghost'}
-            onClick={() => setCurrentSection('exam')}
-            className={`flex-1 ${currentSection === 'exam' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white'}`}
-          >
-            <Award className="h-4 w-4 mr-2" />
-            Exam
-          </Button>
+        <div className="flex mb-8 bg-white/10 backdrop-blur-lg rounded-lg p-2 gap-1">
+          {(['theory', 'quiz', 'challenge'] as const).map((tab) => (
+            <Button
+              key={tab}
+              variant={currentSection === tab ? 'default' : 'ghost'}
+              onClick={() => setCurrentSection(tab)}
+              className={`flex-1 capitalize ${currentSection === tab ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white'}`}
+            >
+              {tab === 'theory' && <BookOpen className="h-4 w-4 mr-2" />}
+              {tab === 'quiz' && <Award className="h-4 w-4 mr-2" />}
+              {tab === 'challenge' && <Code className="h-4 w-4 mr-2" />}
+              {tab === 'theory' ? 'Theory' : tab === 'quiz' ? `Quiz (${levelContent.quiz.length}Q)` : 'Challenge'}
+            </Button>
+          ))}
         </div>
 
-        {/* Content */}
-        {currentSection === 'theory' ? (
+        {/* ── THEORY SECTION ── */}
+        {currentSection === 'theory' && (
           <Card className="bg-white/10 backdrop-blur-lg border-white/20">
             <CardHeader>
-              <CardTitle className="text-white">Theory</CardTitle>
-              <CardDescription className="text-gray-300">
-                Learn the concepts before taking the exam
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="prose prose-invert max-w-none">
-                <p className="text-gray-200 text-lg leading-relaxed">
-                  {levelContent.theory.content}
-                </p>
-                {levelContent.theory.codeExample && (
-                  <div className="bg-gray-900 rounded-lg p-4 mt-4">
-                    <h4 className="text-blue-400 mb-2">Example:</h4>
-                    <pre className="text-green-400 text-sm overflow-x-auto">
-                      <code>{levelContent.theory.codeExample}</code>
-                    </pre>
-                  </div>
-                )}
-              </div>
-              <Button
-                onClick={() => setCurrentSection('exam')}
-                className="mt-6 bg-green-600 hover:bg-green-700 text-white"
-              >
-                Take the Exam
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
-            <CardHeader>
-              <CardTitle className="text-white">Exam</CardTitle>
-              <CardDescription className="text-gray-300">
-                Test your understanding of the concepts
-              </CardDescription>
+              <CardTitle className="text-white">📘 Theory: {levelContent.topic}</CardTitle>
+              <CardDescription className="text-gray-300">Learn the concept before taking the quiz</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="text-white text-lg">
-                {levelContent.exam.question}
-              </div>
-              
-              <RadioGroup
-                value={selectedAnswer}
-                onValueChange={setSelectedAnswer}
-                className="space-y-3"
-              >
-                {levelContent.exam.options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <RadioGroupItem 
-                      value={option} 
-                      id={`option-${index}`}
-                      className="border-white/20 text-blue-400"
-                    />
-                    <Label 
-                      htmlFor={`option-${index}`} 
-                      className="text-gray-200 cursor-pointer"
-                    >
-                      {option}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+              <p className="text-gray-200 text-lg leading-relaxed">{levelContent.theory.content}</p>
 
-              {showResult && (
-                <div className={`p-4 rounded-lg ${
-                  selectedAnswer === levelContent.exam.correctAnswer 
-                    ? 'bg-green-600/20 border border-green-500' 
-                    : 'bg-red-600/20 border border-red-500'
-                }`}>
-                  <p className="text-white">
-                    {selectedAnswer === levelContent.exam.correctAnswer 
-                      ? '✅ Correct! Well done!' 
-                      : '❌ Incorrect. Try again!'}
-                  </p>
-                  {selectedAnswer !== levelContent.exam.correctAnswer && (
-                    <p className="text-gray-300 mt-2">
-                      The correct answer is: {levelContent.exam.correctAnswer}
-                    </p>
-                  )}
+              {levelContent.theory.syntax && (
+                <div className="bg-gray-900 rounded-lg p-4">
+                  <h4 className="text-yellow-400 font-semibold mb-2">🧩 Syntax</h4>
+                  <pre className="text-yellow-200 text-sm overflow-x-auto whitespace-pre-wrap"><code>{levelContent.theory.syntax}</code></pre>
                 </div>
               )}
 
-              <div className="flex space-x-4">
-                {!showResult ? (
-                  <Button
-                    onClick={handleExamSubmit}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={!selectedAnswer}
-                  >
-                    Submit Answer
-                  </Button>
-                ) : examCompleted ? (
-                  <Button
-                    onClick={handleNextLevel}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {currentLevel < 100 ? 'Next Level' : 'Back to Dashboard'}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setShowResult(false);
-                      setSelectedAnswer('');
-                    }}
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
-                  >
-                    Try Again
-                  </Button>
-                )}
+              {levelContent.theory.codeExample && (
+                <div className="bg-gray-900 rounded-lg p-4">
+                  <h4 className="text-blue-400 font-semibold mb-2">💡 Example Code</h4>
+                  <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap"><code>{levelContent.theory.codeExample}</code></pre>
+                </div>
+              )}
+
+              <Button onClick={() => setCurrentSection('quiz')} className="mt-4 bg-green-600 hover:bg-green-700 text-white">
+                Take the Quiz <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── QUIZ SECTION ── */}
+        {currentSection === 'quiz' && (
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-white">📝 Quiz</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Question {currentQuizIndex + 1} of {levelContent.quiz.length}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  {levelContent.quiz.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        quizResults[i] === true
+                          ? 'bg-green-500 text-white'
+                          : quizResults[i] === false
+                          ? 'bg-red-500 text-white'
+                          : i === currentQuizIndex
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white/20 text-gray-400'
+                      }`}
+                    >
+                      {quizResults[i] === true ? '✓' : i + 1}
+                    </div>
+                  ))}
+                </div>
               </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!allQuizPassed ? (
+                <>
+                  <div className="text-white text-lg font-medium">{currentQuiz.question}</div>
+
+                  <RadioGroup value={selectedAnswer} onValueChange={setSelectedAnswer} className="space-y-3">
+                    {currentQuiz.options.map((option, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                          showResult && option === currentQuiz.correctAnswer
+                            ? 'border-green-500 bg-green-600/20'
+                            : showResult && option === selectedAnswer && option !== currentQuiz.correctAnswer
+                            ? 'border-red-500 bg-red-600/20'
+                            : 'border-white/10 hover:border-white/30'
+                        }`}
+                      >
+                        <RadioGroupItem value={option} id={`opt-${index}`} className="border-white/20 text-blue-400" disabled={showResult} />
+                        <Label htmlFor={`opt-${index}`} className="text-gray-200 cursor-pointer flex-1">{option}</Label>
+                        {showResult && option === currentQuiz.correctAnswer && <CheckCircle2 className="h-5 w-5 text-green-400" />}
+                      </div>
+                    ))}
+                  </RadioGroup>
+
+                  {showResult && (
+                    <div className={`p-4 rounded-lg ${selectedAnswer === currentQuiz.correctAnswer ? 'bg-green-600/20 border border-green-500' : 'bg-red-600/20 border border-red-500'}`}>
+                      <p className="text-white">
+                        {selectedAnswer === currentQuiz.correctAnswer ? '✅ Correct!' : '❌ Incorrect.'}
+                      </p>
+                      {selectedAnswer !== currentQuiz.correctAnswer && (
+                        <p className="text-gray-300 mt-1">Correct answer: {currentQuiz.correctAnswer}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    {!showResult ? (
+                      <Button onClick={handleQuizSubmit} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={!selectedAnswer}>
+                        Submit Answer
+                      </Button>
+                    ) : selectedAnswer === currentQuiz.correctAnswer ? (
+                      <Button onClick={handleNextQuestion} className="bg-green-600 hover:bg-green-700 text-white">
+                        {currentQuizIndex < levelContent.quiz.length - 1 ? 'Next Question' : 'Finish Quiz'}
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <Button onClick={() => { setShowResult(false); setSelectedAnswer(''); }} className="bg-orange-600 hover:bg-orange-700 text-white">
+                        Try Again
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-6xl">🎉</div>
+                  <h3 className="text-2xl font-bold text-white">Level {currentLevel} Complete!</h3>
+                  <p className="text-gray-300">You answered all {levelContent.quiz.length} questions correctly.</p>
+                  <div className="flex gap-4 justify-center mt-6">
+                    <Button onClick={() => setCurrentSection('challenge')} variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                      <Code className="h-4 w-4 mr-2" /> View Challenge
+                    </Button>
+                    <Button onClick={handleNextLevel} className="bg-green-600 hover:bg-green-700 text-white">
+                      {currentLevel < 100 ? 'Next Level' : 'Back to Dashboard'}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── CODING CHALLENGE SECTION ── */}
+        {currentSection === 'challenge' && levelContent.codingChallenge && (
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white">💻 Coding Challenge</CardTitle>
+              <CardDescription className="text-gray-300">Practice what you learned</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-gray-900/80 rounded-lg p-5 border border-white/10">
+                <h4 className="text-white font-semibold text-lg mb-3">Problem</h4>
+                <p className="text-gray-200">{levelContent.codingChallenge.problem}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
+                  <h5 className="text-blue-400 font-semibold mb-2">Input</h5>
+                  <p className="text-gray-300 text-sm">{levelContent.codingChallenge.input}</p>
+                </div>
+                <div className="bg-gray-900/80 rounded-lg p-4 border border-white/10">
+                  <h5 className="text-green-400 font-semibold mb-2">Expected Output</h5>
+                  <p className="text-gray-300 text-sm">{levelContent.codingChallenge.output}</p>
+                </div>
+              </div>
+
+              <div className="bg-gray-900 rounded-lg p-4">
+                <h5 className="text-yellow-400 font-semibold mb-2">Example Solution</h5>
+                <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap"><code>{levelContent.codingChallenge.example}</code></pre>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentSection === 'challenge' && !levelContent.codingChallenge && (
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <CardContent className="py-12 text-center">
+              <p className="text-gray-300">No coding challenge available for this level yet.</p>
             </CardContent>
           </Card>
         )}
