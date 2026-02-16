@@ -27,6 +27,14 @@ const LanguageLevel = () => {
   const currentLevel = parseInt(level || '1');
   const levelContent = generateLevelContent(language || '', currentLevel);
 
+  // Reset state when level or language changes
+  useEffect(() => {
+    setCurrentSection('theory');
+    setSelectedAnswer('');
+    setExamCompleted(false);
+    setShowResult(false);
+  }, [language, level]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
