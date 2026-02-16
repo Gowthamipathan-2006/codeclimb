@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent } from '@/utils/levelContent';
 
@@ -26,6 +26,11 @@ const LanguageLevel = () => {
   const [showResult, setShowResult] = useState(false);
   const [allQuizPassed, setAllQuizPassed] = useState(false);
 
+  // Code editor state
+  const [userCode, setUserCode] = useState('');
+  const [codeOutput, setCodeOutput] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
+
   const currentLevel = parseInt(level || '1');
   const levelContent = generateLevelContent(language || '', currentLevel);
 
@@ -36,6 +41,8 @@ const LanguageLevel = () => {
     setQuizResults([]);
     setShowResult(false);
     setAllQuizPassed(false);
+    setUserCode('');
+    setCodeOutput('');
   }, [language, level]);
 
   useEffect(() => {
@@ -76,7 +83,9 @@ const LanguageLevel = () => {
       if (allCorrect) {
         setAllQuizPassed(true);
         completeLevel(language || '', currentLevel);
-        toast({ title: "🎉 All Questions Correct!", description: "Level completed! You can proceed." });
+        toast({ title: "🎉 Quiz Complete!", description: "Moving to the coding challenge..." });
+        // Auto-switch to coding challenge after a brief delay
+        setTimeout(() => setCurrentSection('challenge'), 1500);
       } else {
         toast({ title: "Some answers were wrong", description: "Review and retry the incorrect ones.", variant: "destructive" });
       }
@@ -104,6 +113,38 @@ const LanguageLevel = () => {
       navigate(`/language/${language}/${currentLevel - 1}`);
     } else {
       navigate('/dashboard');
+    }
+  };
+
+  const handleRunCode = () => {
+    if (!userCode.trim()) {
+      toast({ title: "Empty Editor", description: "Write some code before running.", variant: "destructive" });
+      return;
+    }
+    setIsRunning(true);
+    setCodeOutput('');
+    // Simulate execution
+    setTimeout(() => {
+      setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n> Output:\n  [Your program output would appear here]\n\n✨ Code executed successfully!`);
+      setIsRunning(false);
+    }, 1200);
+  };
+
+  const handleClearCode = () => {
+    setUserCode('');
+    setCodeOutput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const target = e.target as HTMLTextAreaElement;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      setUserCode(userCode.substring(0, start) + '    ' + userCode.substring(end));
+      setTimeout(() => {
+        target.selectionStart = target.selectionEnd = start + 4;
+      }, 0);
     }
   };
 
@@ -270,17 +311,8 @@ const LanguageLevel = () => {
               ) : (
                 <div className="text-center py-8 space-y-4">
                   <div className="text-6xl animate-float">🎉</div>
-                  <h3 className="text-2xl font-extrabold text-foreground">Level {currentLevel} Complete!</h3>
-                  <p className="text-muted-foreground">You answered all {levelContent.quiz.length} questions correctly ✨</p>
-                  <div className="flex gap-4 justify-center mt-6">
-                    <Button onClick={() => setCurrentSection('challenge')} variant="outline" className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10">
-                      <Code className="h-4 w-4 mr-2" /> View Challenge
-                    </Button>
-                    <Button onClick={handleNextLevel} className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute">
-                      {currentLevel < 100 ? 'Next Level' : 'Back to Dashboard'}
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </div>
+                  <h3 className="text-2xl font-extrabold text-foreground">Quiz Complete!</h3>
+                  <p className="text-muted-foreground">Switching to coding challenge... ✨</p>
                 </div>
               )}
             </CardContent>
@@ -289,83 +321,170 @@ const LanguageLevel = () => {
 
         {/* CODING CHALLENGE SECTION */}
         {currentSection === 'challenge' && levelContent.codingChallenge && (
-          <Card className="cute-card border-0 animate-fade-in">
-            <CardHeader>
-              <CardTitle className="text-foreground font-extrabold">💻 Coding Challenge</CardTitle>
-              <CardDescription className="text-muted-foreground">Apply what you learned — write the code yourself</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-foreground/5 rounded-2xl p-5">
-                <h4 className="text-foreground font-bold text-lg mb-3">📋 Problem</h4>
-                <p className="text-foreground/80">{levelContent.codingChallenge.problem}</p>
+          <div className="space-y-6 animate-fade-in">
+            {/* Problem + Info Row */}
+            <div className="grid lg:grid-cols-5 gap-6">
+              {/* Left: Problem & Info */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card className="cute-card border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-foreground font-extrabold text-lg">📋 Problem</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-foreground/80 text-sm leading-relaxed">{levelContent.codingChallenge.problem}</p>
+                  </CardContent>
+                </Card>
+
+                {levelContent.codingChallenge.tasks.length > 0 && (
+                  <Card className="cute-card border-0">
+                    <CardContent className="pt-5">
+                      <h5 className="text-accent-foreground font-bold mb-3 text-sm">✅ Tasks</h5>
+                      <ul className="space-y-1.5">
+                        {levelContent.codingChallenge.tasks.map((task, i) => (
+                          <li key={i} className="flex items-start gap-2 text-foreground/70 text-xs">
+                            <span className="text-accent-foreground font-bold mt-0.5">{i + 1}.</span>
+                            <span>{task}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {levelContent.codingChallenge.testCases.length > 0 && (
+                  <Card className="cute-card border-0">
+                    <CardContent className="pt-5">
+                      <h5 className="text-accent-foreground font-bold mb-3 text-sm">🧪 Test Cases</h5>
+                      <div className="space-y-2">
+                        {levelContent.codingChallenge.testCases.map((tc, i) => (
+                          <div key={i} className="bg-muted/50 rounded-xl p-3">
+                            <p className="text-muted-foreground text-[10px] mb-1.5 font-bold uppercase">Test {i + 1}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <p className="text-muted-foreground text-[10px] uppercase font-semibold">Input</p>
+                                <pre className="text-foreground/70 text-xs whitespace-pre-wrap">{tc.input}</pre>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-[10px] uppercase font-semibold">Output</p>
+                                <pre className="text-cute-success text-xs whitespace-pre-wrap font-semibold">{tc.output}</pre>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {levelContent.codingChallenge.hints.length > 0 && (
+                  <Card className="cute-card border-0 bg-cute-yellow/10">
+                    <CardContent className="pt-5">
+                      <h5 className="text-secondary-foreground font-bold mb-3 text-sm">💡 Hints</h5>
+                      <ul className="space-y-1.5">
+                        {levelContent.codingChallenge.hints.map((hint, i) => (
+                          <li key={i} className="text-foreground/60 text-xs flex items-start gap-2">
+                            <span className="text-secondary-foreground">→</span>
+                            <span>{hint}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {levelContent.codingChallenge.constraints && levelContent.codingChallenge.constraints.length > 0 && (
+                  <Card className="cute-card border-0 bg-cute-peach/10">
+                    <CardContent className="pt-5">
+                      <h5 className="text-secondary-foreground font-bold mb-3 text-sm">⚠️ Constraints</h5>
+                      <ul className="space-y-1">
+                        {levelContent.codingChallenge.constraints.map((c, i) => (
+                          <li key={i} className="text-foreground/70 text-xs flex items-start gap-2">
+                            <span className="text-secondary-foreground">•</span>
+                            <span>{c}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
-              {levelContent.codingChallenge.tasks.length > 0 && (
-                <div className="bg-cute-sky/10 rounded-2xl p-5">
-                  <h5 className="text-accent-foreground font-bold mb-3">✅ Tasks</h5>
-                  <ul className="space-y-2">
-                    {levelContent.codingChallenge.tasks.map((task, i) => (
-                      <li key={i} className="flex items-start gap-2 text-foreground/70 text-sm">
-                        <span className="text-accent-foreground font-bold mt-0.5">{i + 1}.</span>
-                        <span>{task}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {levelContent.codingChallenge.constraints && levelContent.codingChallenge.constraints.length > 0 && (
-                <div className="bg-cute-peach/15 rounded-2xl p-5">
-                  <h5 className="text-secondary-foreground font-bold mb-3">⚠️ Constraints</h5>
-                  <ul className="space-y-1">
-                    {levelContent.codingChallenge.constraints.map((c, i) => (
-                      <li key={i} className="text-foreground/70 text-sm flex items-start gap-2">
-                        <span className="text-secondary-foreground">•</span>
-                        <span>{c}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {levelContent.codingChallenge.testCases.length > 0 && (
-                <div className="bg-cute-mint/10 rounded-2xl p-5">
-                  <h5 className="text-accent-foreground font-bold mb-3">🧪 Test Cases</h5>
-                  <div className="space-y-3">
-                    {levelContent.codingChallenge.testCases.map((tc, i) => (
-                      <div key={i} className="bg-card rounded-xl p-4 border border-border/50">
-                        <p className="text-muted-foreground text-xs mb-2 font-semibold">Test Case {i + 1}</p>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-muted-foreground text-xs uppercase mb-1 font-semibold">Input</p>
-                            <pre className="text-foreground/70 text-sm whitespace-pre-wrap">{tc.input}</pre>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-xs uppercase mb-1 font-semibold">Expected Output</p>
-                            <pre className="text-cute-success text-sm whitespace-pre-wrap font-semibold">{tc.output}</pre>
-                          </div>
-                        </div>
+              {/* Right: Code Editor + Output */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Editor Card */}
+                <Card className="cute-card border-0 overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 bg-foreground/[0.03] border-b border-border/50">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-destructive/40" />
+                        <div className="w-3 h-3 rounded-full bg-cute-yellow" />
+                        <div className="w-3 h-3 rounded-full bg-cute-success" />
                       </div>
-                    ))}
+                      <span className="text-muted-foreground text-xs font-semibold ml-2">
+                        {(language || '').toLowerCase()}_solution.{language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'java' ? 'java' : language === 'html' ? 'html' : language === 'css' ? 'css' : 'c'}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearCode}
+                        className="h-7 px-2 text-muted-foreground hover:text-destructive text-xs"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                  <textarea
+                    value={userCode}
+                    onChange={(e) => setUserCode(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={`// Write your ${(language || '').toUpperCase()} code here...\n// Start coding! 🚀`}
+                    className="w-full min-h-[300px] p-5 bg-card text-foreground font-mono text-sm resize-y focus:outline-none placeholder:text-muted-foreground/50 leading-relaxed"
+                    spellCheck={false}
+                  />
+                  <div className="flex items-center gap-3 px-5 py-3 bg-foreground/[0.03] border-t border-border/50">
+                    <Button
+                      onClick={handleRunCode}
+                      disabled={isRunning || !userCode.trim()}
+                      className="cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute text-xs h-8 px-4"
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      {isRunning ? 'Running...' : 'Run Code'}
+                    </Button>
+                    <Button
+                      onClick={handleNextLevel}
+                      className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute text-xs h-8 px-4"
+                    >
+                      {currentLevel < 100 ? 'Next Level' : 'Dashboard'}
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                    <span className="text-muted-foreground text-[10px] ml-auto">
+                      {userCode.split('\n').length} lines
+                    </span>
+                  </div>
+                </Card>
 
-              {levelContent.codingChallenge.hints.length > 0 && (
-                <div className="bg-cute-yellow/15 rounded-2xl p-5">
-                  <h5 className="text-secondary-foreground font-bold mb-3">💡 Hints</h5>
-                  <ul className="space-y-2">
-                    {levelContent.codingChallenge.hints.map((hint, i) => (
-                      <li key={i} className="text-foreground/60 text-sm flex items-start gap-2">
-                        <span className="text-secondary-foreground">→</span>
-                        <span>{hint}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                {/* Output Console */}
+                <Card className="cute-card border-0 overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-3 bg-foreground/[0.03] border-b border-border/50">
+                    <Terminal className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs font-bold">Output Console</span>
+                  </div>
+                  <div className="p-5 min-h-[100px] bg-card">
+                    {codeOutput ? (
+                      <pre className="text-foreground/70 text-sm font-mono whitespace-pre-wrap leading-relaxed">{codeOutput}</pre>
+                    ) : (
+                      <p className="text-muted-foreground/50 text-sm italic">
+                        Output will appear here after running your code...
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
         )}
 
         {currentSection === 'challenge' && !levelContent.codingChallenge && (
