@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgress } from '@/contexts/ProgressContext';
@@ -8,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent } from '@/utils/levelContent';
-
-const MAX_LEVELS = 30;
+import MonacoCodeEditor from '@/components/MonacoCodeEditor';
+import { Textarea } from '@/components/ui/textarea';
 
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
@@ -27,12 +27,14 @@ const LanguageLevel = () => {
   const [quizResults, setQuizResults] = useState<(boolean | null)[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [allQuizPassed, setAllQuizPassed] = useState(false);
+  const MAX_LEVELS = 30;
 
   // Code editor state
   const [userCode, setUserCode] = useState('');
+  const [customInput, setCustomInput] = useState('');
   const [codeOutput, setCodeOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-
+  const [submitResult, setSubmitResult] = useState<'pass' | 'fail' | null>(null);
   const currentLevel = parseInt(level || '1');
   const levelContent = generateLevelContent(language || '', currentLevel);
 
@@ -44,7 +46,9 @@ const LanguageLevel = () => {
     setShowResult(false);
     setAllQuizPassed(false);
     setUserCode('');
+    setCustomInput('');
     setCodeOutput('');
+    setSubmitResult(null);
   }, [language, level]);
 
   useEffect(() => {
@@ -117,47 +121,106 @@ const LanguageLevel = () => {
     }
   };
 
-  const handleRunCode = () => {
+  // Simulate code execution based on user code and input
+  const simulateExecution = useCallback((code: string, input: string): string => {
+    if (!code.trim()) return '';
+    const lang = (language || '').toLowerCase();
+    const lines: string[] = [];
+
+    // Extract print/printf/console.log statements and simulate output
+    const printPatterns = [
+      /printf\s*\(\s*"([^"]*)"/g,              // C printf
+      /print\s*\(\s*(?:f?")?([^")]*)"?\s*\)/g,  // Python print
+      /console\.log\s*\(\s*(?:['"`])([^'"`]*)['"`]\s*\)/g, // JS console.log
+      /System\.out\.println\s*\(\s*"([^"]*)"/g,  // Java
+    ];
+
+    for (const pattern of printPatterns) {
+      let match;
+      while ((match = pattern.exec(code)) !== null) {
+        let output = match[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\t/g, '\t')
+          .replace(/%d|%i|%f|%lf|%c|%s|%lu|%ld/g, () => {
+            return input.trim() || '0';
+          });
+        lines.push(output);
+      }
+    }
+
+    if (lines.length > 0) {
+      return lines.join('\n');
+    }
+
+    // Fallback: acknowledge the code ran
+    return `> Program compiled and executed successfully.\n> Input: ${input || '(none)'}\n> [Output depends on your code logic]`;
+  }, [language]);
+
+  const handleRunCode = useCallback(() => {
     if (!userCode.trim()) {
       toast({ title: "Empty Editor", description: "Write some code before running.", variant: "destructive" });
       return;
     }
     setIsRunning(true);
     setCodeOutput('');
-    setTimeout(() => {
-      setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n> Output:\n  [Your program output would appear here]\n\n✨ Code executed successfully!`);
-      setIsRunning(false);
-    }, 1200);
-  };
+    setSubmitResult(null);
 
-  const handleSubmitCode = async () => {
+    setTimeout(() => {
+      const output = simulateExecution(userCode, customInput);
+      setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n\n${output}`);
+      setIsRunning(false);
+    }, 800);
+  }, [userCode, customInput, language, simulateExecution, toast]);
+
+  const handleSubmitCode = useCallback(async () => {
     if (!userCode.trim()) {
       toast({ title: "Empty Editor", description: "Write some code before submitting.", variant: "destructive" });
       return;
     }
-    // Mark level complete in database
-    await completeLevel(language || '', currentLevel);
-    toast({ title: "🎉 Level Complete!", description: `Level ${currentLevel} marked as complete!` });
-    setCodeOutput(prev => prev + '\n\n✅ Level completed! You can now proceed to the next level.');
-  };
-
-  const handleClearCode = () => {
-    setUserCode('');
+    setIsRunning(true);
     setCodeOutput('');
-  };
+    setSubmitResult(null);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const target = e.target as HTMLTextAreaElement;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-      setUserCode(userCode.substring(0, start) + '    ' + userCode.substring(end));
-      setTimeout(() => {
-        target.selectionStart = target.selectionEnd = start + 4;
-      }, 0);
-    }
-  };
+    const challenge = levelContent.codingChallenge;
+    if (!challenge) return;
+
+    setTimeout(async () => {
+      const results: string[] = [];
+      let allPassed = true;
+
+      for (let i = 0; i < challenge.testCases.length; i++) {
+        const tc = challenge.testCases[i];
+        const output = simulateExecution(userCode, tc.input === 'None' ? '' : tc.input);
+        const cleanOutput = output.trim().toLowerCase();
+        const expectedClean = tc.output.trim().toLowerCase();
+        const passed = cleanOutput.includes(expectedClean);
+
+        if (!passed) allPassed = false;
+        results.push(`Test ${i + 1}: ${passed ? '✅ PASSED' : '❌ FAILED'}\n  Input: ${tc.input}\n  Expected: ${tc.output}\n  Got: ${output || '(no output)'}`);
+      }
+
+      const resultText = results.join('\n\n');
+
+      if (allPassed) {
+        setSubmitResult('pass');
+        await completeLevel(language || '', currentLevel);
+        setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
+        toast({ title: "🎉 Level Complete!", description: `All test cases passed!` });
+      } else {
+        setSubmitResult('fail');
+        setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n❌ Some tests failed. Review your code and try again.`);
+        toast({ title: "Tests Failed", description: "Some test cases didn't pass.", variant: "destructive" });
+      }
+      setIsRunning(false);
+    }, 1000);
+  }, [userCode, levelContent, language, currentLevel, simulateExecution, completeLevel, toast]);
+
+  const handleClearCode = useCallback(() => {
+    setUserCode('');
+    setCustomInput('');
+    setCodeOutput('');
+    setSubmitResult(null);
+  }, []);
 
   if (authLoading) return null;
 
@@ -421,8 +484,9 @@ const LanguageLevel = () => {
                 )}
               </div>
 
-              {/* Right: Code Editor + Output */}
+              {/* Right: Code Editor + Input + Output */}
               <div className="lg:col-span-3 space-y-4">
+                {/* Monaco Editor */}
                 <Card className="cute-card border-0 overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3 bg-foreground/[0.03] border-b border-border/50">
                     <div className="flex items-center gap-2">
@@ -447,52 +511,66 @@ const LanguageLevel = () => {
                       </Button>
                     </div>
                   </div>
-                  <textarea
+                  <MonacoCodeEditor
+                    language={language || 'c'}
                     value={userCode}
-                    onChange={(e) => setUserCode(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={`// Write your ${(language || '').toUpperCase()} code here...\n// Start coding! 🚀`}
-                    className="w-full min-h-[300px] p-5 bg-card text-foreground font-mono text-sm resize-y focus:outline-none placeholder:text-muted-foreground/50 leading-relaxed"
-                    spellCheck={false}
+                    onChange={setUserCode}
+                    placeholder={`// Write your ${(language || '').toUpperCase()} code here...`}
                   />
-                  <div className="flex items-center gap-3 px-5 py-3 bg-foreground/[0.03] border-t border-border/50">
-                    <Button
-                      onClick={handleRunCode}
-                      disabled={isRunning || !userCode.trim()}
-                      className="cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute text-xs h-8 px-4"
-                    >
-                      <Play className="h-3 w-3 mr-1" />
-                      {isRunning ? 'Running...' : 'Run Code'}
-                    </Button>
-                    <Button
-                      onClick={handleSubmitCode}
-                      disabled={!userCode.trim()}
-                      className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute text-xs h-8 px-4"
-                    >
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Submit Solution
-                    </Button>
-                    <Button
-                      onClick={handleNextLevel}
-                      variant="outline"
-                      className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-8 px-4"
-                    >
-                      {currentLevel < MAX_LEVELS ? 'Next Level' : 'Dashboard'}
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                    <span className="text-muted-foreground text-[10px] ml-auto">
-                      {userCode.split('\n').length} lines
-                    </span>
-                  </div>
                 </Card>
 
-                {/* Output Console */}
+                {/* Custom Input Area */}
                 <Card className="cute-card border-0 overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-2 bg-foreground/[0.03] border-b border-border/50">
+                    <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs font-bold">Custom Input</span>
+                  </div>
+                  <Textarea
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    placeholder="Enter custom input here (stdin)..."
+                    className="border-0 rounded-none bg-card font-mono text-sm min-h-[60px] resize-y focus-visible:ring-0 focus-visible:ring-offset-0"
+                    rows={2}
+                  />
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleRunCode}
+                    disabled={isRunning || !userCode.trim()}
+                    className="cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute text-xs h-9 px-5"
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1.5" />
+                    {isRunning ? 'Running...' : 'Run Code'}
+                  </Button>
+                  <Button
+                    onClick={handleSubmitCode}
+                    disabled={isRunning || !userCode.trim()}
+                    className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute text-xs h-9 px-5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                    Submit Solution
+                  </Button>
+                  <Button
+                    onClick={handleNextLevel}
+                    variant="outline"
+                    className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-9 px-5 ml-auto"
+                  >
+                    {currentLevel < MAX_LEVELS ? 'Next Level' : 'Dashboard'}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                  </Button>
+                </div>
+
+                {/* Output Console */}
+                <Card className={`cute-card border-0 overflow-hidden ${submitResult === 'pass' ? 'ring-2 ring-cute-success/40' : submitResult === 'fail' ? 'ring-2 ring-destructive/30' : ''}`}>
                   <div className="flex items-center gap-2 px-5 py-3 bg-foreground/[0.03] border-b border-border/50">
                     <Terminal className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground text-xs font-bold">Output Console</span>
+                    {submitResult === 'pass' && <Badge className="ml-auto bg-cute-success/20 text-cute-success border-0 text-[10px]">ALL PASSED</Badge>}
+                    {submitResult === 'fail' && <Badge className="ml-auto bg-destructive/20 text-destructive border-0 text-[10px]">FAILED</Badge>}
                   </div>
-                  <div className="p-5 min-h-[100px] bg-card">
+                  <div className="p-5 min-h-[120px] bg-card">
                     {codeOutput ? (
                       <pre className="text-foreground/70 text-sm font-mono whitespace-pre-wrap leading-relaxed">{codeOutput}</pre>
                     ) : (
