@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Code, LogOut, Trophy, BookOpen } from 'lucide-react';
+import { Code, LogOut, Trophy, BookOpen, CheckCircle2, Lock } from 'lucide-react';
 
 const MAX_LEVELS = 30;
 
@@ -23,7 +23,7 @@ const languages = [
 
 const Dashboard = () => {
   const { user, displayName, logout, isAuthenticated, loading: authLoading } = useAuth();
-  const { getCompletedLevels } = useProgress();
+  const { getCompletedLevels, getHighestCompletedLevel } = useProgress();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,8 +37,9 @@ const Dashboard = () => {
     navigate('/');
   };
 
-  const handleLanguageClick = (language: string) => {
-    navigate(`/language/${language.toLowerCase()}/1`);
+  const handleLanguageClick = (languageName: string) => {
+    const nextLevel = Math.min(getHighestCompletedLevel(languageName) + 1, MAX_LEVELS);
+    navigate(`/language/${languageName.toLowerCase()}/${nextLevel}`);
   };
 
   if (authLoading || !user) return null;
@@ -112,7 +113,8 @@ const Dashboard = () => {
                       </div>
                       {language.name}
                     </CardTitle>
-                    <Badge className="bg-muted text-muted-foreground border-0 rounded-full font-semibold">
+                    <Badge className={`border-0 rounded-full font-semibold ${completed > 0 ? 'bg-cute-success/20 text-cute-success' : 'bg-muted text-muted-foreground'}`}>
+                      {completed > 0 && <CheckCircle2 className="h-3 w-3 mr-1" />}
                       {completed}/{MAX_LEVELS}
                     </Badge>
                   </div>
@@ -129,7 +131,7 @@ const Dashboard = () => {
                       className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-cute"
                     >
                       <BookOpen className="h-3 w-3 mr-1" />
-                      Continue
+                      {completed === 0 ? 'Start' : completed >= MAX_LEVELS ? 'Review' : 'Continue'}
                     </Button>
                   </div>
                 </CardContent>

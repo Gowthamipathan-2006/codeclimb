@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent } from '@/utils/levelContent';
 import MonacoCodeEditor from '@/components/MonacoCodeEditor';
@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { completeLevel, isLevelUnlocked } = useProgress();
+  const { completeLevel, isLevelUnlocked, getHighestCompletedLevel } = useProgress();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,21 +35,25 @@ const LanguageLevel = () => {
   const [codeOutput, setCodeOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<'pass' | 'fail' | null>(null);
+  const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
   const currentLevel = parseInt(level || '1');
   const levelContent = generateLevelContent(language || '', currentLevel);
 
   useEffect(() => {
-    setCurrentSection('theory');
+    const highest = getHighestCompletedLevel(language || '');
+    const completed = currentLevel <= highest;
+    setIsAlreadyCompleted(completed);
+    setCurrentSection(completed ? 'challenge' : 'theory');
     setCurrentQuizIndex(0);
     setSelectedAnswer('');
     setQuizResults([]);
     setShowResult(false);
-    setAllQuizPassed(false);
+    setAllQuizPassed(completed);
     setUserCode('');
     setCustomInput('');
     setCodeOutput('');
-    setSubmitResult(null);
-  }, [language, level]);
+    setSubmitResult(completed ? 'pass' : null);
+  }, [language, level, getHighestCompletedLevel, currentLevel]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -242,9 +246,20 @@ const LanguageLevel = () => {
               {levelContent.difficulty}
             </Badge>
           </div>
-          <Badge className="bg-cute-pink/20 text-secondary-foreground border-0 rounded-full font-bold">
-            {currentLevel}/{MAX_LEVELS}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isAlreadyCompleted && (
+              <Badge className="bg-cute-success/20 text-cute-success border-0 rounded-full font-bold text-xs">
+                <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
+              </Badge>
+            )}
+            <Badge className="bg-cute-pink/20 text-secondary-foreground border-0 rounded-full font-bold">
+              {currentLevel}/{MAX_LEVELS}
+            </Badge>
+            <Button variant="outline" onClick={() => navigate('/dashboard')} className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10 h-9 px-3">
+              <Home className="h-4 w-4 mr-1" />
+              Home
+            </Button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
