@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateLevelContent } from '@/utils/levelContent';
+import { generateLevelContent, fetchLevelContent, hasHandCraftedContent, LevelContent } from '@/utils/levelContent';
 import MonacoCodeEditor from '@/components/MonacoCodeEditor';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -36,8 +36,28 @@ const LanguageLevel = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<'pass' | 'fail' | null>(null);
   const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const currentLevel = parseInt(level || '1');
-  const levelContent = generateLevelContent(language || '', currentLevel);
+  const [levelContent, setLevelContent] = useState<LevelContent>(() => generateLevelContent(language || '', currentLevel));
+
+  // Fetch AI-generated content for levels without hand-crafted content
+  useEffect(() => {
+    const lang = language || '';
+    const syncContent = generateLevelContent(lang, currentLevel);
+    setLevelContent(syncContent);
+
+    if (!hasHandCraftedContent(lang, currentLevel)) {
+      setIsLoadingContent(true);
+      fetchLevelContent(lang, currentLevel).then((aiContent) => {
+        if (aiContent) {
+          setLevelContent(aiContent);
+        }
+        setIsLoadingContent(false);
+      });
+    } else {
+      setIsLoadingContent(false);
+    }
+  }, [language, currentLevel]);
 
   useEffect(() => {
     const highest = getHighestCompletedLevel(language || '');
@@ -291,6 +311,12 @@ const LanguageLevel = () => {
               <CardDescription className="text-muted-foreground">Learn the concept before taking the quiz</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {isLoadingContent && (
+                <div className="flex items-center gap-2 text-primary animate-pulse mb-4">
+                  <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm font-medium">Generating topic-specific content...</span>
+                </div>
+              )}
               <p className="text-foreground/80 text-lg leading-relaxed">{levelContent.theory.content}</p>
 
               {levelContent.theory.syntax && (
