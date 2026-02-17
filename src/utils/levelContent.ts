@@ -1,5 +1,6 @@
 
 import { getTopic, getDifficulty } from './curriculum';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface QuizQuestion {
   question: string;
@@ -34,7 +35,7 @@ export interface LevelContent {
 }
 
 // ────────────────────────────────────────────
-// C LANGUAGE CONTENT
+// C LANGUAGE CONTENT (hand-crafted levels 1-10)
 // ────────────────────────────────────────────
 const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -222,7 +223,7 @@ const cContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diffi
 };
 
 // ────────────────────────────────────────────
-// PYTHON CONTENT
+// PYTHON CONTENT (hand-crafted levels 1-3)
 // ────────────────────────────────────────────
 const pythonContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -282,7 +283,7 @@ const pythonContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | '
 };
 
 // ────────────────────────────────────────────
-// JAVASCRIPT CONTENT
+// JAVASCRIPT CONTENT (hand-crafted levels 1-2)
 // ────────────────────────────────────────────
 const jsContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -324,7 +325,7 @@ const jsContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'diff
 };
 
 // ────────────────────────────────────────────
-// JAVA CONTENT
+// JAVA CONTENT (hand-crafted level 1)
 // ────────────────────────────────────────────
 const javaContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -348,7 +349,7 @@ const javaContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'di
 };
 
 // ────────────────────────────────────────────
-// C++ CONTENT
+// C++ CONTENT (hand-crafted level 1)
 // ────────────────────────────────────────────
 const cppContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -372,7 +373,7 @@ const cppContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'dif
 };
 
 // ────────────────────────────────────────────
-// HTML CONTENT
+// HTML CONTENT (hand-crafted level 1)
 // ────────────────────────────────────────────
 const htmlContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -396,7 +397,7 @@ const htmlContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'di
 };
 
 // ────────────────────────────────────────────
-// CSS CONTENT
+// CSS CONTENT (hand-crafted level 1)
 // ────────────────────────────────────────────
 const cssContent: { [level: number]: Omit<LevelContent, 'title' | 'topic' | 'difficulty'> } = {
   1: {
@@ -433,85 +434,83 @@ const contentMaps: { [lang: string]: { [level: number]: Omit<LevelContent, 'titl
 };
 
 // ────────────────────────────────────────────
-// SMART FALLBACK GENERATOR
+// LOADING PLACEHOLDER
 // ────────────────────────────────────────────
-function generateFallbackContent(language: string, topic: string, level: number, difficulty: string): Omit<LevelContent, 'title' | 'topic' | 'difficulty'> {
-  const lang = language.toUpperCase();
-
+function getLoadingContent(topic: string, language: string): Omit<LevelContent, 'title' | 'topic' | 'difficulty'> {
   return {
     theory: {
-      content: `In this level, you'll learn about ${topic} in ${lang}. ${topic} is ${difficulty === 'Beginner' ? 'a fundamental concept' : difficulty === 'Intermediate' ? 'an important intermediate concept' : 'an advanced concept'} that builds on your previous knowledge. Understanding ${topic} will help you write more efficient and professional ${lang} code.`,
-      syntax: `// ${topic} syntax in ${lang}\n// Refer to official documentation for complete syntax`,
-      codeExample: `// Example: ${topic} in ${lang}\n// Level ${level}\n// Practice this concept thoroughly!`
+      content: `Loading content for "${topic}" in ${language.toUpperCase()}... This may take a few seconds on first load.`,
+      syntax: '// Loading...',
+      codeExample: '// Loading...'
     },
     quiz: [
-      {
-        question: `What is the primary purpose of ${topic} in ${lang}?`,
-        options: [
-          `To organize and structure ${lang} code effectively`,
-          'To make the program run slower',
-          'It has no real purpose',
-          'To create compilation errors'
-        ],
-        correctAnswer: `To organize and structure ${lang} code effectively`
-      },
-      {
-        question: `When should you use ${topic}?`,
-        options: [
-          'Never',
-          `When the ${lang} program requires this specific functionality`,
-          'Only in testing',
-          'Only in comments'
-        ],
-        correctAnswer: `When the ${lang} program requires this specific functionality`
-      },
-      {
-        question: `Which best describes ${topic}?`,
-        options: [
-          `A ${difficulty.toLowerCase()}-level concept in ${lang}`,
-          'An outdated feature',
-          'Only available in Python',
-          'A type of hardware'
-        ],
-        correctAnswer: `A ${difficulty.toLowerCase()}-level concept in ${lang}`
-      }
+      { question: 'Content is loading...', options: ['Please wait', 'Loading...', 'Almost ready', 'Generating...'], correctAnswer: 'Please wait' },
+      { question: 'Content is loading...', options: ['Please wait', 'Loading...', 'Almost ready', 'Generating...'], correctAnswer: 'Please wait' },
+      { question: 'Content is loading...', options: ['Please wait', 'Loading...', 'Almost ready', 'Generating...'], correctAnswer: 'Please wait' },
     ],
     codingChallenge: {
-      problem: `Write a ${lang} program that demonstrates the use of ${topic}.`,
-      tasks: [
-        `Implement a working example of ${topic}`,
-        'Include proper input handling if required',
-        'Print or display the output clearly'
-      ],
-      constraints: [`Use only ${topic}-related concepts`, `Difficulty: ${difficulty}`],
-      testCases: [{ input: 'Varies based on implementation', output: 'Depends on your approach' }],
-      hints: [
-        `Review the theory section for ${topic} syntax`,
-        `Think about where ${topic} is commonly used in real programs`,
-        'Start simple, then add complexity'
-      ]
+      problem: 'Loading...',
+      tasks: ['Please wait for content to generate'],
+      testCases: [{ input: 'None', output: 'Loading...' }],
+      hints: ['Content is being generated']
     }
   };
 }
 
 // ────────────────────────────────────────────
-// MAIN EXPORT
+// MAIN GENERATOR (synchronous for hand-crafted, returns loading for AI)
 // ────────────────────────────────────────────
-export const generateLevelContent = (language: string, level: number): LevelContent => {
+export function generateLevelContent(language: string, level: number): LevelContent {
   const lang = language.toLowerCase();
   const topic = getTopic(lang, level);
   const difficulty = getDifficulty(level);
-  const title = `Level ${level} – ${topic}`;
 
-  const contentMap = contentMaps[lang];
-  const specificContent = contentMap?.[level];
-
-  const content = specificContent || generateFallbackContent(language, topic, level, difficulty);
+  const handCrafted = contentMaps[lang]?.[level];
+  const base = handCrafted || getLoadingContent(topic, lang);
 
   return {
-    title,
+    title: `${topic} – ${difficulty}`,
     topic,
     difficulty,
-    ...content,
+    ...base,
   };
-};
+}
+
+// ────────────────────────────────────────────
+// ASYNC FETCHER for AI-generated content
+// ────────────────────────────────────────────
+export async function fetchLevelContent(language: string, level: number): Promise<LevelContent | null> {
+  const lang = language.toLowerCase();
+  const topic = getTopic(lang, level);
+  const difficulty = getDifficulty(level);
+
+  // If hand-crafted content exists, no need to fetch
+  if (contentMaps[lang]?.[level]) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-level-content', {
+      body: { language: lang, level, topic, difficulty },
+    });
+
+    if (error) throw error;
+
+    return {
+      title: `${topic} – ${difficulty}`,
+      topic,
+      difficulty,
+      theory: data.theory,
+      quiz: data.quiz,
+      codingChallenge: data.codingChallenge,
+    };
+  } catch (err) {
+    console.error('Failed to fetch AI content:', err);
+    return null;
+  }
+}
+
+// Check if a level has hand-crafted content
+export function hasHandCraftedContent(language: string, level: number): boolean {
+  return !!contentMaps[language.toLowerCase()]?.[level];
+}

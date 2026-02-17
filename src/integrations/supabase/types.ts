@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      level_content_cache: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          language: string
+          level: number
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          language: string
+          level: number
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          language?: string
+          level?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
