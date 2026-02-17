@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home, RotateCcw, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent, fetchLevelContent, hasHandCraftedContent, LevelContent } from '@/utils/levelContent';
 import MonacoCodeEditor from '@/components/MonacoCodeEditor';
 import { Textarea } from '@/components/ui/textarea';
+import { useSqlJs, SqlResult } from '@/hooks/useSqlJs';
+import { toolTracks } from '@/utils/curriculum';
 
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
@@ -39,6 +41,10 @@ const LanguageLevel = () => {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const currentLevel = parseInt(level || '1');
   const [levelContent, setLevelContent] = useState<LevelContent>(() => generateLevelContent(language || '', currentLevel));
+
+  // SQL.js integration for SQL tracks
+  const isSqlTrack = (language || '').toLowerCase() === 'sql';
+  const { ready: sqlReady, executeQuery, resetDatabase } = useSqlJs(isSqlTrack);
 
   // Fetch AI-generated content for levels without hand-crafted content
   useEffect(() => {
@@ -145,40 +151,48 @@ const LanguageLevel = () => {
     }
   };
 
+  // Format SQL results into a readable table string
+  const formatSqlResults = useCallback((results: SqlResult[]): string => {
+    if (results.length === 0) return 'Query executed successfully. (No rows returned)';
+    const parts: string[] = [];
+    for (const table of results) {
+      const colWidths = table.columns.map((col, ci) => {
+        const vals = table.values.map(row => String(row[ci] ?? 'NULL').length);
+        return Math.max(col.length, ...vals);
+      });
+      const header = table.columns.map((c, i) => c.padEnd(colWidths[i])).join(' | ');
+      const sep = colWidths.map(w => '─'.repeat(w)).join('─┼─');
+      const rows = table.values.map(row =>
+        row.map((v, i) => String(v ?? 'NULL').padEnd(colWidths[i])).join(' | ')
+      );
+      parts.push([header, sep, ...rows].join('\n'));
+    }
+    return parts.join('\n\n');
+  }, []);
+
   // Simulate code execution based on user code and input
   const simulateExecution = useCallback((code: string, input: string): string => {
     if (!code.trim()) return '';
-    const lang = (language || '').toLowerCase();
     const lines: string[] = [];
-
-    // Extract print/printf/console.log statements and simulate output
     const printPatterns = [
-      /printf\s*\(\s*"([^"]*)"/g,              // C printf
-      /print\s*\(\s*(?:f?")?([^")]*)"?\s*\)/g,  // Python print
-      /console\.log\s*\(\s*(?:['"`])([^'"`]*)['"`]\s*\)/g, // JS console.log
-      /System\.out\.println\s*\(\s*"([^"]*)"/g,  // Java
+      /printf\s*\(\s*"([^"]*)"/g,
+      /print\s*\(\s*(?:f?")?([^")]*)"?\s*\)/g,
+      /console\.log\s*\(\s*(?:['"`])([^'"`]*)['"`]\s*\)/g,
+      /System\.out\.println\s*\(\s*"([^"]*)"/g,
     ];
-
     for (const pattern of printPatterns) {
       let match;
       while ((match = pattern.exec(code)) !== null) {
         let output = match[1]
           .replace(/\\n/g, '\n')
           .replace(/\\t/g, '\t')
-          .replace(/%d|%i|%f|%lf|%c|%s|%lu|%ld/g, () => {
-            return input.trim() || '0';
-          });
+          .replace(/%d|%i|%f|%lf|%c|%s|%lu|%ld/g, () => input.trim() || '0');
         lines.push(output);
       }
     }
-
-    if (lines.length > 0) {
-      return lines.join('\n');
-    }
-
-    // Fallback: acknowledge the code ran
+    if (lines.length > 0) return lines.join('\n');
     return `> Program compiled and executed successfully.\n> Input: ${input || '(none)'}\n> [Output depends on your code logic]`;
-  }, [language]);
+  }, []);
 
   const handleRunCode = useCallback(() => {
     if (!userCode.trim()) {
@@ -189,12 +203,22 @@ const LanguageLevel = () => {
     setCodeOutput('');
     setSubmitResult(null);
 
-    setTimeout(() => {
-      const output = simulateExecution(userCode, customInput);
-      setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n\n${output}`);
+    if (isSqlTrack) {
+      const { results, error } = executeQuery(userCode);
+      if (error) {
+        setCodeOutput(`SQL Error:\n${error}`);
+      } else {
+        setCodeOutput(formatSqlResults(results));
+      }
       setIsRunning(false);
-    }, 800);
-  }, [userCode, customInput, language, simulateExecution, toast]);
+    } else {
+      setTimeout(() => {
+        const output = simulateExecution(userCode, customInput);
+        setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n\n${output}`);
+        setIsRunning(false);
+      }, 800);
+    }
+  }, [userCode, customInput, language, simulateExecution, toast, isSqlTrack, executeQuery, formatSqlResults]);
 
   const handleSubmitCode = useCallback(async () => {
     if (!userCode.trim()) {
@@ -208,36 +232,83 @@ const LanguageLevel = () => {
     const challenge = levelContent.codingChallenge;
     if (!challenge) return;
 
-    setTimeout(async () => {
-      const results: string[] = [];
+    if (isSqlTrack) {
+      // Reset DB to clean state before validation
+      await resetDatabase();
+      // Small delay to let the db re-initialize
+      await new Promise(r => setTimeout(r, 100));
+      const { results, error } = executeQuery(userCode);
+
+      if (error) {
+        setCodeOutput(`SQL Error:\n${error}`);
+        setSubmitResult('fail');
+        toast({ title: "SQL Error", description: error, variant: "destructive" });
+        setIsRunning(false);
+        return;
+      }
+
+      // Validate: check that results have rows (non-empty) or match expected patterns
+      const output = formatSqlResults(results);
+      const testResults: string[] = [];
       let allPassed = true;
 
       for (let i = 0; i < challenge.testCases.length; i++) {
         const tc = challenge.testCases[i];
-        const output = simulateExecution(userCode, tc.input === 'None' ? '' : tc.input);
-        const cleanOutput = output.trim().toLowerCase();
-        const expectedClean = tc.output.trim().toLowerCase();
-        const passed = cleanOutput.includes(expectedClean);
-
+        const expected = tc.output.trim().toLowerCase();
+        const actual = output.toLowerCase();
+        // Check if expected keywords/values appear in actual output
+        const expectedParts = expected.split(/[\n,|]+/).map(s => s.trim()).filter(Boolean);
+        const passed = expectedParts.every(part => actual.includes(part));
         if (!passed) allPassed = false;
-        results.push(`Test ${i + 1}: ${passed ? '✅ PASSED' : '❌ FAILED'}\n  Input: ${tc.input}\n  Expected: ${tc.output}\n  Got: ${output || '(no output)'}`);
+        testResults.push(
+          `Test ${i + 1}: ${passed ? '✅ PASSED' : '❌ FAILED'}\n  Expected to contain: ${tc.output}\n  ${passed ? '✓ Found in output' : '✗ Not found in output'}`
+        );
       }
 
-      const resultText = results.join('\n\n');
+      const resultText = `${output}\n\n${'─'.repeat(30)}\n🎯 Validation Results\n${'─'.repeat(30)}\n\n${testResults.join('\n\n')}`;
 
       if (allPassed) {
         setSubmitResult('pass');
         await completeLevel(language || '', currentLevel);
-        setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
-        toast({ title: "🎉 Level Complete!", description: `All test cases passed!` });
+        setCodeOutput(`${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
+        toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
       } else {
         setSubmitResult('fail');
-        setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n❌ Some tests failed. Review your code and try again.`);
+        setCodeOutput(`${resultText}\n\n❌ Some tests failed. Review your query and try again.`);
         toast({ title: "Tests Failed", description: "Some test cases didn't pass.", variant: "destructive" });
       }
       setIsRunning(false);
-    }, 1000);
-  }, [userCode, levelContent, language, currentLevel, simulateExecution, completeLevel, toast]);
+    } else {
+      setTimeout(async () => {
+        const results: string[] = [];
+        let allPassed = true;
+
+        for (let i = 0; i < challenge.testCases.length; i++) {
+          const tc = challenge.testCases[i];
+          const output = simulateExecution(userCode, tc.input === 'None' ? '' : tc.input);
+          const cleanOutput = output.trim().toLowerCase();
+          const expectedClean = tc.output.trim().toLowerCase();
+          const passed = cleanOutput.includes(expectedClean);
+          if (!passed) allPassed = false;
+          results.push(`Test ${i + 1}: ${passed ? '✅ PASSED' : '❌ FAILED'}\n  Input: ${tc.input}\n  Expected: ${tc.output}\n  Got: ${output || '(no output)'}`);
+        }
+
+        const resultText = results.join('\n\n');
+
+        if (allPassed) {
+          setSubmitResult('pass');
+          await completeLevel(language || '', currentLevel);
+          setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
+          toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
+        } else {
+          setSubmitResult('fail');
+          setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n❌ Some tests failed. Review your code and try again.`);
+          toast({ title: "Tests Failed", description: "Some test cases didn't pass.", variant: "destructive" });
+        }
+        setIsRunning(false);
+      }, 1000);
+    }
+  }, [userCode, levelContent, language, currentLevel, simulateExecution, completeLevel, toast, isSqlTrack, executeQuery, resetDatabase, formatSqlResults]);
 
   const handleClearCode = useCallback(() => {
     setUserCode('');
@@ -537,10 +608,21 @@ const LanguageLevel = () => {
                         <div className="w-3 h-3 rounded-full bg-cute-success" />
                       </div>
                       <span className="text-muted-foreground text-xs font-semibold ml-2">
-                        {(language || '').toLowerCase()}_solution.{language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'java' ? 'java' : language === 'html' ? 'html' : language === 'css' ? 'css' : 'c'}
+                        {isSqlTrack ? 'query.sql' : `${(language || '').toLowerCase()}_solution.${language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'java' ? 'java' : language === 'html' ? 'html' : language === 'css' ? 'css' : 'c'}`}
                       </span>
                     </div>
                     <div className="flex gap-2">
+                      {isSqlTrack && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={resetDatabase}
+                          className="h-7 px-2 text-muted-foreground hover:text-primary text-xs"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Reset DB
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -553,27 +635,39 @@ const LanguageLevel = () => {
                     </div>
                   </div>
                   <MonacoCodeEditor
-                    language={language || 'c'}
+                    language={isSqlTrack ? 'sql' : (language || 'c')}
                     value={userCode}
                     onChange={setUserCode}
-                    placeholder={`// Write your ${(language || '').toUpperCase()} code here...`}
+                    placeholder={isSqlTrack ? '-- Write your SQL query here...' : `// Write your ${(language || '').toUpperCase()} code here...`}
                   />
                 </Card>
 
-                {/* Custom Input Area */}
-                <Card className="cute-card border-0 overflow-hidden">
-                  <div className="flex items-center gap-2 px-5 py-2 bg-foreground/[0.03] border-b border-border/50">
-                    <Send className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-muted-foreground text-xs font-bold">Custom Input</span>
+                {/* SQL environment indicator */}
+                {isSqlTrack && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-xl border border-primary/10">
+                    <Database className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-primary font-medium">
+                      {sqlReady ? 'SQL environment ready — Tables: employees, students' : 'Loading SQL environment...'}
+                    </span>
                   </div>
-                  <Textarea
-                    value={customInput}
-                    onChange={(e) => setCustomInput(e.target.value)}
-                    placeholder="Enter custom input here (stdin)..."
-                    className="border-0 rounded-none bg-card font-mono text-sm min-h-[60px] resize-y focus-visible:ring-0 focus-visible:ring-offset-0"
-                    rows={2}
-                  />
-                </Card>
+                )}
+
+                {/* Custom Input Area — hide for SQL */}
+                {!isSqlTrack && (
+                  <Card className="cute-card border-0 overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-2 bg-foreground/[0.03] border-b border-border/50">
+                      <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground text-xs font-bold">Custom Input</span>
+                    </div>
+                    <Textarea
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      placeholder="Enter custom input here (stdin)..."
+                      className="border-0 rounded-none bg-card font-mono text-sm min-h-[60px] resize-y focus-visible:ring-0 focus-visible:ring-offset-0"
+                      rows={2}
+                    />
+                  </Card>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3">
