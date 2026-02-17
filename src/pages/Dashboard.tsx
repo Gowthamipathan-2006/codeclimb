@@ -37,14 +37,16 @@ const Dashboard = () => {
     navigate('/');
   };
 
+  const langKey = (name: string) => name.toLowerCase();
+
   const handleLanguageClick = (languageName: string) => {
-    const nextLevel = Math.min(getHighestCompletedLevel(languageName) + 1, MAX_LEVELS);
-    navigate(`/language/${languageName.toLowerCase()}/${nextLevel}`);
+    const nextLevel = Math.min(getHighestCompletedLevel(langKey(languageName)) + 1, MAX_LEVELS);
+    navigate(`/language/${langKey(languageName)}/${nextLevel}`);
   };
 
   if (authLoading || !user) return null;
 
-  const totalCompleted = languages.reduce((sum, lang) => sum + getCompletedLevels(lang.name), 0);
+  const totalCompleted = languages.reduce((sum, lang) => sum + getCompletedLevels(langKey(lang.name)), 0);
   const totalLevels = languages.length * MAX_LEVELS;
   const overallProgress = (totalCompleted / totalLevels) * 100;
 
@@ -94,7 +96,7 @@ const Dashboard = () => {
         {/* Languages Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {languages.map((language) => {
-            const completed = getCompletedLevels(language.name);
+            const completed = getCompletedLevels(langKey(language.name));
             const progress = (completed / MAX_LEVELS) * 100;
             
             return (
