@@ -15,6 +15,7 @@ const languageMap: Record<string, string> = {
   java: 'java',
   html: 'html',
   css: 'css',
+  sql: 'sql',
 };
 
 const MonacoCodeEditor = ({ language, value, onChange, placeholder }: MonacoCodeEditorProps) => {
