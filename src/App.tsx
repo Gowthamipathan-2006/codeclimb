@@ -9,6 +9,8 @@ import { ProgressProvider } from "./contexts/ProgressContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import VerifyEmail from "./pages/VerifyEmail";
+import EmailConfirmed from "./pages/EmailConfirmed";
 import Dashboard from "./pages/Dashboard";
 import LanguageLevel from "./pages/LanguageLevel";
 import NotFound from "./pages/NotFound";
@@ -27,6 +29,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/email-confirmed" element={<EmailConfirmed />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/language/:language/:level" element={<LanguageLevel />} />
               <Route path="*" element={<NotFound />} />

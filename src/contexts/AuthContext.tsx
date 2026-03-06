@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   displayName: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; emailNotVerified?: boolean }>;
   signup: (displayName: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -74,15 +74,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       email,
       password,
       options: {
-        data: { display_name: displayName }
+        data: { display_name: displayName },
+        emailRedirectTo: `${window.location.origin}/email-confirmed`
       }
     });
     return !error;
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return !error;
+  const login = async (email: string, password: string): Promise<{ success: boolean; emailNotVerified?: boolean }> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (error.message?.toLowerCase().includes('email not confirmed')) {
+        return { success: false, emailNotVerified: true };
+      }
+      return { success: false };
+    }
+    return { success: true };
   };
 
   const logout = async () => {

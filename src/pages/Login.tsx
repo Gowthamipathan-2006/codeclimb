@@ -23,10 +23,13 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         toast({ title: "Welcome back! 🎉", description: "Successfully logged in to CodeClimb." });
         navigate('/dashboard');
+      } else if (result.emailNotVerified) {
+        toast({ title: "Email Not Verified", description: "Please verify your email before logging in.", variant: "destructive" });
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
       } else {
         toast({ title: "Login Failed", description: "Invalid email or password. Please try again.", variant: "destructive" });
       }
