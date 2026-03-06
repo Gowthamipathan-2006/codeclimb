@@ -32,8 +32,8 @@ const Signup = () => {
     try {
       const success = await signup(displayName, email, password);
       if (success) {
-        toast({ title: "Account Created! 🎉", description: "Welcome to CodeClimb!" });
-        navigate('/dashboard');
+        toast({ title: "Account Created! 🎉", description: "Please check your email to verify your account." });
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
       } else {
         toast({ title: "Signup Failed", description: "An account with this email already exists.", variant: "destructive" });
       }
