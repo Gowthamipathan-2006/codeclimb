@@ -11,6 +11,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import EmailConfirmed from "./pages/EmailConfirmed";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import LanguageLevel from "./pages/LanguageLevel";
 import NotFound from "./pages/NotFound";
@@ -31,6 +33,8 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/email-confirmed" element={<EmailConfirmed />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/language/:language/:level" element={<LanguageLevel />} />
               <Route path="*" element={<NotFound />} />

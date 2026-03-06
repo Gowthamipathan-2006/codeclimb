@@ -15,6 +15,9 @@ import MonacoCodeEditor from '@/components/MonacoCodeEditor';
 import { Textarea } from '@/components/ui/textarea';
 import { useSqlJs, SqlResult } from '@/hooks/useSqlJs';
 import { toolTracks } from '@/utils/curriculum';
+import CelebrationOverlay from '@/components/CelebrationOverlay';
+import { validateLanguage } from '@/utils/languageValidator';
+import AICodingAssistant from '@/components/AICodingAssistant';
 
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
@@ -38,6 +41,7 @@ const LanguageLevel = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<'pass' | 'fail' | null>(null);
   const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const currentLevel = parseInt(level || '1');
   const [levelContent, setLevelContent] = useState<LevelContent>(() => generateLevelContent(language || '', currentLevel));
@@ -87,11 +91,8 @@ const LanguageLevel = () => {
       navigate('/login');
       return;
     }
-    if (!isLevelUnlocked(language || '', currentLevel)) {
-      toast({ title: "Level Locked 🔒", description: "Complete the previous level to unlock this one.", variant: "destructive" });
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, authLoading, language, currentLevel, isLevelUnlocked, navigate, toast]);
+    // All levels are now accessible — no lock check
+  }, [isAuthenticated, authLoading, navigate]);
 
   const currentQuiz = levelContent.quiz[currentQuizIndex];
 
@@ -225,6 +226,16 @@ const LanguageLevel = () => {
       toast({ title: "Empty Editor", description: "Write some code before submitting.", variant: "destructive" });
       return;
     }
+
+    // Language-specific validation (skip for tool tracks)
+    if (!toolTracks.includes((language || '').toLowerCase())) {
+      const validationError = validateLanguage(userCode, language || '');
+      if (validationError) {
+        toast({ title: "Wrong Language", description: validationError, variant: "destructive" });
+        return;
+      }
+    }
+
     setIsRunning(true);
     setCodeOutput('');
     setSubmitResult(null);
@@ -272,6 +283,7 @@ const LanguageLevel = () => {
         await completeLevel(language || '', currentLevel);
         setCodeOutput(`${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
         toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
+        setShowCelebration(true);
       } else {
         setSubmitResult('fail');
         setCodeOutput(`${resultText}\n\n❌ Some tests failed. Review your query and try again.`);
@@ -300,6 +312,7 @@ const LanguageLevel = () => {
           await completeLevel(language || '', currentLevel);
           setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
           toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
+          setShowCelebration(true);
         } else {
           setSubmitResult('fail');
           setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n❌ Some tests failed. Review your code and try again.`);
@@ -321,6 +334,7 @@ const LanguageLevel = () => {
 
   return (
     <div className="min-h-screen cute-gradient">
+      <CelebrationOverlay show={showCelebration} onClose={() => setShowCelebration(false)} />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 animate-fade-in">
@@ -510,6 +524,12 @@ const LanguageLevel = () => {
         {/* CODING CHALLENGE SECTION */}
         {currentSection === 'challenge' && levelContent.codingChallenge && (
           <div className="space-y-6 animate-fade-in">
+            {/* AI Coding Assistant */}
+            <AICodingAssistant
+              language={language || ''}
+              code={userCode}
+              problem={levelContent.codingChallenge.problem}
+            />
             <div className="grid lg:grid-cols-5 gap-6">
               {/* Left: Problem & Info */}
               <div className="lg:col-span-2 space-y-4">

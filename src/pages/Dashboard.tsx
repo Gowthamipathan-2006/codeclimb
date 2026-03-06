@@ -51,6 +51,7 @@ const Dashboard = () => {
   };
 
   const handleTrackClick = (key: string) => {
+    // Navigate to level 1 by default; all levels are now accessible
     const nextLevel = Math.min(getHighestCompletedLevel(key) + 1, MAX_LEVELS);
     navigate(`/language/${key}/${nextLevel}`);
   };
