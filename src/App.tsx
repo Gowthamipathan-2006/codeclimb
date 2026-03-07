@@ -14,6 +14,7 @@ import EmailConfirmed from "./pages/EmailConfirmed";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import TopicList from "./pages/TopicList";
 import LanguageLevel from "./pages/LanguageLevel";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/topics/:language" element={<TopicList />} />
               <Route path="/language/:language/:level" element={<LanguageLevel />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
