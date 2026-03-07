@@ -1,13 +1,16 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgress } from '@/contexts/ProgressContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Code, LogOut, Trophy, BookOpen, CheckCircle2, Wrench } from 'lucide-react';
+import { Code, LogOut, Trophy, BookOpen, CheckCircle2, Wrench, Award, Download } from 'lucide-react';
+import Certificate from '@/components/Certificate';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const MAX_LEVELS = 30;
 
@@ -34,10 +37,27 @@ const tools = [
 
 const allTracks = [...languages, ...tools];
 
+// Course display names
+const courseNames: Record<string, string> = {};
+allTracks.forEach(t => { courseNames[t.key] = `${t.name} Programming`; });
+
+interface CertificateData {
+  id: string;
+  language: string;
+  course_name: string;
+  student_name: string;
+  certificate_id: string;
+  completed_at: string;
+}
+
 const Dashboard = () => {
   const { user, displayName, logout, isAuthenticated, loading: authLoading } = useAuth();
-  const { getCompletedLevels, getHighestCompletedLevel } = useProgress();
+  const { getCompletedLevels } = useProgress();
   const navigate = useNavigate();
+  const [certificates, setCertificates] = useState<CertificateData[]>([]);
+  const [showCertDialog, setShowCertDialog] = useState(false);
+  const [selectedCert, setSelectedCert] = useState<CertificateData | null>(null);
+  const [generatingCert, setGeneratingCert] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -45,15 +65,54 @@ const Dashboard = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
+  // Fetch user certificates
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('certificates')
+      .select('*')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data) setCertificates(data as CertificateData[]);
+      });
+  }, [user]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
   const handleTrackClick = (key: string) => {
-    // Navigate to level 1 by default; all levels are now accessible
-    const nextLevel = Math.min(getHighestCompletedLevel(key) + 1, MAX_LEVELS);
-    navigate(`/language/${key}/${nextLevel}`);
+    navigate(`/topics/${key}`);
+  };
+
+  const handleGenerateCertificate = async (trackKey: string) => {
+    if (!user || !displayName) return;
+    setGeneratingCert(trackKey);
+
+    const track = allTracks.find(t => t.key === trackKey);
+    const courseName = track ? `${track.name} Programming` : trackKey;
+    const certId = `CC-${trackKey.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    const { data, error } = await supabase
+      .from('certificates')
+      .insert({
+        user_id: user.id,
+        language: trackKey,
+        course_name: courseName,
+        student_name: displayName,
+        certificate_id: certId,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      const cert = data as CertificateData;
+      setCertificates(prev => [...prev, cert]);
+      setSelectedCert(cert);
+      setShowCertDialog(true);
+    }
+    setGeneratingCert(null);
   };
 
   if (authLoading || !user) return null;
@@ -65,6 +124,8 @@ const Dashboard = () => {
   const renderCard = (track: typeof languages[0]) => {
     const completed = getCompletedLevels(track.key);
     const progress = (completed / MAX_LEVELS) * 100;
+    const isCourseDone = completed >= MAX_LEVELS;
+    const hasCert = certificates.some(c => c.language === track.key);
 
     return (
       <Card
@@ -95,13 +156,39 @@ const Dashboard = () => {
           <Progress value={progress} className="h-2 mb-3 bg-muted" />
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{progress.toFixed(0)}% Complete</span>
-            <Button
-              size="sm"
-              className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-cute"
-            >
-              <BookOpen className="h-3 w-3 mr-1" />
-              {completed === 0 ? 'Start' : completed >= MAX_LEVELS ? 'Review' : 'Continue'}
-            </Button>
+            <div className="flex items-center gap-2">
+              {isCourseDone && !hasCert && (
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGenerateCertificate(track.key);
+                  }}
+                  disabled={generatingCert === track.key}
+                  className="cute-btn rounded-full bg-cute-yellow text-foreground text-xs shadow-cute font-bold"
+                >
+                  <Award className="h-3 w-3 mr-1" />
+                  {generatingCert === track.key ? 'Generating...' : 'Get Certificate'}
+                </Button>
+              )}
+              {hasCert && (
+                <Badge className="bg-cute-yellow/20 text-secondary-foreground border-0 rounded-full text-[10px]">
+                  <Award className="h-3 w-3 mr-1" />
+                  Certified
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                className="cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-cute"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTrackClick(track.key);
+                }}
+              >
+                <BookOpen className="h-3 w-3 mr-1" />
+                {completed === 0 ? 'Start' : completed >= MAX_LEVELS ? 'Review' : 'Continue'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -151,6 +238,41 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* My Certificates */}
+        {certificates.length > 0 && (
+          <>
+            <div className="flex items-center gap-3 mb-4 animate-fade-in">
+              <div className="w-8 h-8 rounded-xl bg-cute-yellow/30 flex items-center justify-center">
+                <Award className="h-4 w-4 text-secondary-foreground" />
+              </div>
+              <h2 className="text-xl font-extrabold text-foreground">My Certificates</h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+              {certificates.map(cert => (
+                <Card
+                  key={cert.id}
+                  className="cute-card border-0 cursor-pointer hover:shadow-cute-hover transition-all duration-300 hover:-translate-y-1"
+                  onClick={() => { setSelectedCert(cert); setShowCertDialog(true); }}
+                >
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-cute-yellow/20 flex items-center justify-center shrink-0">
+                        <Award className="h-5 w-5 text-secondary-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-foreground font-bold text-sm truncate">{cert.course_name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {new Date(cert.completed_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Programming Languages */}
         <div className="flex items-center gap-3 mb-4 animate-fade-in">
           <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -173,6 +295,26 @@ const Dashboard = () => {
           {tools.map(renderCard)}
         </div>
       </div>
+
+      {/* Certificate Dialog */}
+      <Dialog open={showCertDialog} onOpenChange={setShowCertDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-foreground font-extrabold flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Certificate of Completion
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCert && (
+            <Certificate
+              studentName={selectedCert.student_name}
+              courseName={selectedCert.course_name}
+              completionDate={selectedCert.completed_at}
+              certificateId={selectedCert.certificate_id}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

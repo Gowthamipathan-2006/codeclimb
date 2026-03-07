@@ -3,12 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgress } from '@/contexts/ProgressContext';
+import { useStepProgress } from '@/hooks/useStepProgress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home, RotateCcw, Database } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Award, Code, CheckCircle2, Play, Trash2, Terminal, Send, Home, RotateCcw, Database, Lock, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLevelContent, fetchLevelContent, hasHandCraftedContent, LevelContent } from '@/utils/levelContent';
 import MonacoCodeEditor from '@/components/MonacoCodeEditor';
@@ -19,10 +20,15 @@ import CelebrationOverlay from '@/components/CelebrationOverlay';
 import { validateLanguage } from '@/utils/languageValidator';
 import AICodingAssistant from '@/components/AICodingAssistant';
 
+// Auto-save helpers
+const getCodeStorageKey = (userId: string, language: string, level: number) =>
+  `codeclimb_code_${userId}_${language}_${level}`;
+
 const LanguageLevel = () => {
   const { language, level } = useParams<{ language: string; level: string }>();
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { completeLevel, isLevelUnlocked, getHighestCompletedLevel } = useProgress();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { completeLevel, getHighestCompletedLevel } = useProgress();
+  const { completeStep, isStepCompleted, isStepUnlocked } = useStepProgress();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,59 +46,104 @@ const LanguageLevel = () => {
   const [codeOutput, setCodeOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<'pass' | 'fail' | null>(null);
-  const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [codeSaved, setCodeSaved] = useState(false);
   const currentLevel = parseInt(level || '1');
   const [levelContent, setLevelContent] = useState<LevelContent>(() => generateLevelContent(language || '', currentLevel));
+  const lang = (language || '').toLowerCase();
 
   // SQL.js integration for SQL tracks
-  const isSqlTrack = (language || '').toLowerCase() === 'sql';
+  const isSqlTrack = lang === 'sql';
   const { ready: sqlReady, executeQuery, resetDatabase } = useSqlJs(isSqlTrack);
+
+  // Step completion status
+  const theoryDone = isStepCompleted(lang, currentLevel, 'theory');
+  const quizDone = isStepCompleted(lang, currentLevel, 'quiz');
+  const challengeDone = isStepCompleted(lang, currentLevel, 'challenge');
 
   // Fetch AI-generated content for levels without hand-crafted content
   useEffect(() => {
-    const lang = language || '';
     const syncContent = generateLevelContent(lang, currentLevel);
     setLevelContent(syncContent);
 
     if (!hasHandCraftedContent(lang, currentLevel)) {
       setIsLoadingContent(true);
       fetchLevelContent(lang, currentLevel).then((aiContent) => {
-        if (aiContent) {
-          setLevelContent(aiContent);
-        }
+        if (aiContent) setLevelContent(aiContent);
         setIsLoadingContent(false);
       });
     } else {
       setIsLoadingContent(false);
     }
-  }, [language, currentLevel]);
+  }, [lang, currentLevel]);
 
+  // Reset state on level change & load saved code
   useEffect(() => {
-    const highest = getHighestCompletedLevel(language || '');
-    const completed = currentLevel <= highest;
-    setIsAlreadyCompleted(completed);
-    setCurrentSection(completed ? 'challenge' : 'theory');
+    // Determine starting section based on step completion
+    if (challengeDone) {
+      setCurrentSection('challenge');
+      setAllQuizPassed(true);
+    } else if (quizDone) {
+      setCurrentSection('challenge');
+      setAllQuizPassed(true);
+    } else if (theoryDone) {
+      setCurrentSection('quiz');
+    } else {
+      setCurrentSection('theory');
+    }
     setCurrentQuizIndex(0);
     setSelectedAnswer('');
     setQuizResults([]);
     setShowResult(false);
-    setAllQuizPassed(completed);
-    setUserCode('');
     setCustomInput('');
     setCodeOutput('');
-    setSubmitResult(completed ? 'pass' : null);
-  }, [language, level, getHighestCompletedLevel, currentLevel]);
+    setSubmitResult(challengeDone ? 'pass' : null);
+
+    // Load saved code from localStorage
+    if (user) {
+      const saved = localStorage.getItem(getCodeStorageKey(user.id, lang, currentLevel));
+      setUserCode(saved || '');
+    } else {
+      setUserCode('');
+    }
+  }, [lang, level, currentLevel, theoryDone, quizDone, challengeDone, user]);
+
+  // Auto-save code to localStorage
+  useEffect(() => {
+    if (!user || !userCode) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(getCodeStorageKey(user.id, lang, currentLevel), userCode);
+      setCodeSaved(true);
+      setTimeout(() => setCodeSaved(false), 2000);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [userCode, user, lang, currentLevel]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
       navigate('/login');
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  const handleSectionChange = (tab: 'theory' | 'quiz' | 'challenge') => {
+    if (tab === 'quiz' && !isStepUnlocked(lang, currentLevel, 'quiz')) {
+      toast({ title: "Locked 🔒", description: "Complete the Theory section first.", variant: "destructive" });
       return;
     }
-    // All levels are now accessible — no lock check
-  }, [isAuthenticated, authLoading, navigate]);
+    if (tab === 'challenge' && !isStepUnlocked(lang, currentLevel, 'challenge')) {
+      toast({ title: "Locked 🔒", description: "Pass the Quiz first.", variant: "destructive" });
+      return;
+    }
+    setCurrentSection(tab);
+  };
+
+  const handleTheoryComplete = async () => {
+    await completeStep(lang, currentLevel, 'theory');
+    toast({ title: "Theory Completed ✅", description: "Quiz is now unlocked!" });
+    setCurrentSection('quiz');
+  };
 
   const currentQuiz = levelContent.quiz[currentQuizIndex];
 
@@ -111,7 +162,7 @@ const LanguageLevel = () => {
     }
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentQuizIndex < levelContent.quiz.length - 1) {
       setCurrentQuizIndex(currentQuizIndex + 1);
       setSelectedAnswer('');
@@ -120,7 +171,8 @@ const LanguageLevel = () => {
       const allCorrect = quizResults.every((r) => r === true);
       if (allCorrect) {
         setAllQuizPassed(true);
-        toast({ title: "🎉 Quiz Complete!", description: "Moving to the coding challenge..." });
+        await completeStep(lang, currentLevel, 'quiz');
+        toast({ title: "🎉 Quiz Complete!", description: "Coding Challenge is now unlocked!" });
         setTimeout(() => setCurrentSection('challenge'), 1500);
       } else {
         toast({ title: "Some answers were wrong", description: "Review and retry the incorrect ones.", variant: "destructive" });
@@ -140,16 +192,12 @@ const LanguageLevel = () => {
     if (currentLevel < MAX_LEVELS) {
       navigate(`/language/${language}/${currentLevel + 1}`);
     } else {
-      navigate('/dashboard');
+      navigate(`/topics/${language}`);
     }
   };
 
   const goBack = () => {
-    if (currentLevel > 1) {
-      navigate(`/language/${language}/${currentLevel - 1}`);
-    } else {
-      navigate('/dashboard');
-    }
+    navigate(`/topics/${language}`);
   };
 
   // Format SQL results into a readable table string
@@ -171,7 +219,7 @@ const LanguageLevel = () => {
     return parts.join('\n\n');
   }, []);
 
-  // Simulate code execution based on user code and input
+  // Simulate code execution
   const simulateExecution = useCallback((code: string, input: string): string => {
     if (!code.trim()) return '';
     const lines: string[] = [];
@@ -215,11 +263,11 @@ const LanguageLevel = () => {
     } else {
       setTimeout(() => {
         const output = simulateExecution(userCode, customInput);
-        setCodeOutput(`> Running ${(language || '').toUpperCase()} code...\n> Compilation successful ✓\n\n${output}`);
+        setCodeOutput(`> Running ${lang.toUpperCase()} code...\n> Compilation successful ✓\n\n${output}`);
         setIsRunning(false);
       }, 800);
     }
-  }, [userCode, customInput, language, simulateExecution, toast, isSqlTrack, executeQuery, formatSqlResults]);
+  }, [userCode, customInput, lang, simulateExecution, toast, isSqlTrack, executeQuery, formatSqlResults]);
 
   const handleSubmitCode = useCallback(async () => {
     if (!userCode.trim()) {
@@ -228,8 +276,8 @@ const LanguageLevel = () => {
     }
 
     // Language-specific validation (skip for tool tracks)
-    if (!toolTracks.includes((language || '').toLowerCase())) {
-      const validationError = validateLanguage(userCode, language || '');
+    if (!toolTracks.includes(lang)) {
+      const validationError = validateLanguage(userCode, lang);
       if (validationError) {
         toast({ title: "Wrong Language", description: validationError, variant: "destructive" });
         return;
@@ -244,9 +292,7 @@ const LanguageLevel = () => {
     if (!challenge) return;
 
     if (isSqlTrack) {
-      // Reset DB to clean state before validation
       await resetDatabase();
-      // Small delay to let the db re-initialize
       await new Promise(r => setTimeout(r, 100));
       const { results, error } = executeQuery(userCode);
 
@@ -258,7 +304,6 @@ const LanguageLevel = () => {
         return;
       }
 
-      // Validate: check that results have rows (non-empty) or match expected patterns
       const output = formatSqlResults(results);
       const testResults: string[] = [];
       let allPassed = true;
@@ -267,7 +312,6 @@ const LanguageLevel = () => {
         const tc = challenge.testCases[i];
         const expected = tc.output.trim().toLowerCase();
         const actual = output.toLowerCase();
-        // Check if expected keywords/values appear in actual output
         const expectedParts = expected.split(/[\n,|]+/).map(s => s.trim()).filter(Boolean);
         const passed = expectedParts.every(part => actual.includes(part));
         if (!passed) allPassed = false;
@@ -280,9 +324,10 @@ const LanguageLevel = () => {
 
       if (allPassed) {
         setSubmitResult('pass');
-        await completeLevel(language || '', currentLevel);
-        setCodeOutput(`${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
-        toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
+        await completeStep(lang, currentLevel, 'challenge');
+        await completeLevel(lang, currentLevel);
+        setCodeOutput(`${resultText}\n\n✅ All tests passed! Topic complete!`);
+        toast({ title: "🎉 Topic Complete!", description: "Great job! You mastered this topic!" });
         setShowCelebration(true);
       } else {
         setSubmitResult('fail');
@@ -309,9 +354,10 @@ const LanguageLevel = () => {
 
         if (allPassed) {
           setSubmitResult('pass');
-          await completeLevel(language || '', currentLevel);
-          setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Level ${currentLevel} complete!`);
-          toast({ title: "🎉 Level Complete!", description: "All test cases passed!" });
+          await completeStep(lang, currentLevel, 'challenge');
+          await completeLevel(lang, currentLevel);
+          setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Topic complete!`);
+          toast({ title: "🎉 Topic Complete!", description: "Great job! You mastered this topic!" });
           setShowCelebration(true);
         } else {
           setSubmitResult('fail');
@@ -321,16 +367,25 @@ const LanguageLevel = () => {
         setIsRunning(false);
       }, 1000);
     }
-  }, [userCode, levelContent, language, currentLevel, simulateExecution, completeLevel, toast, isSqlTrack, executeQuery, resetDatabase, formatSqlResults]);
+  }, [userCode, levelContent, lang, currentLevel, simulateExecution, completeLevel, completeStep, toast, isSqlTrack, executeQuery, resetDatabase, formatSqlResults]);
 
   const handleClearCode = useCallback(() => {
     setUserCode('');
     setCustomInput('');
     setCodeOutput('');
     setSubmitResult(null);
-  }, []);
+    if (user) {
+      localStorage.removeItem(getCodeStorageKey(user.id, lang, currentLevel));
+    }
+  }, [user, lang, currentLevel]);
 
   if (authLoading) return null;
+
+  const stepTabs = [
+    { key: 'theory' as const, label: 'Theory', icon: BookOpen, done: theoryDone, unlocked: true },
+    { key: 'quiz' as const, label: `Quiz (${levelContent.quiz.length}Q)`, icon: Award, done: quizDone, unlocked: isStepUnlocked(lang, currentLevel, 'quiz') },
+    { key: 'challenge' as const, label: 'Challenge', icon: Code, done: challengeDone, unlocked: isStepUnlocked(lang, currentLevel, 'challenge') },
+  ];
 
   return (
     <div className="min-h-screen cute-gradient">
@@ -340,7 +395,7 @@ const LanguageLevel = () => {
         <div className="flex items-center justify-between mb-8 animate-fade-in">
           <Button variant="outline" onClick={goBack} className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            Topics
           </Button>
           <div className="text-center">
             <h1 className="text-2xl font-extrabold text-foreground capitalize">
@@ -352,7 +407,7 @@ const LanguageLevel = () => {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            {isAlreadyCompleted && (
+            {challengeDone && (
               <Badge className="bg-cute-success/20 text-cute-success border-0 rounded-full font-bold text-xs">
                 <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
               </Badge>
@@ -367,26 +422,36 @@ const LanguageLevel = () => {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs with step indicators */}
         <div className="flex mb-8 bg-card rounded-2xl p-1.5 gap-1 shadow-cute animate-fade-in">
-          {(['theory', 'quiz', 'challenge'] as const).map((tab) => (
+          {stepTabs.map((tab) => (
             <Button
-              key={tab}
-              variant={currentSection === tab ? 'default' : 'ghost'}
-              onClick={() => setCurrentSection(tab)}
-              className={`flex-1 capitalize rounded-xl font-semibold ${
-                currentSection === tab
+              key={tab.key}
+              variant={currentSection === tab.key ? 'default' : 'ghost'}
+              onClick={() => handleSectionChange(tab.key)}
+              className={`flex-1 capitalize rounded-xl font-semibold relative ${
+                currentSection === tab.key
                   ? 'bg-primary text-primary-foreground shadow-cute'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  : tab.unlocked
+                  ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  : 'text-muted-foreground/40 cursor-not-allowed'
               }`}
             >
-              {tab === 'theory' && <BookOpen className="h-4 w-4 mr-2" />}
-              {tab === 'quiz' && <Award className="h-4 w-4 mr-2" />}
-              {tab === 'challenge' && <Code className="h-4 w-4 mr-2" />}
-              {tab === 'theory' ? 'Theory' : tab === 'quiz' ? `Quiz (${levelContent.quiz.length}Q)` : 'Challenge'}
+              {!tab.unlocked && <Lock className="h-3.5 w-3.5 mr-1.5" />}
+              {tab.done && <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-cute-success" />}
+              {tab.unlocked && !tab.done && <tab.icon className="h-4 w-4 mr-2" />}
+              {tab.label}
             </Button>
           ))}
         </div>
+
+        {/* Code saved indicator */}
+        {codeSaved && currentSection === 'challenge' && (
+          <div className="flex items-center gap-2 mb-4 text-cute-success text-xs font-semibold animate-fade-in">
+            <Save className="h-3.5 w-3.5" />
+            Code saved automatically
+          </div>
+        )}
 
         {/* THEORY SECTION */}
         {currentSection === 'theory' && (
@@ -418,9 +483,17 @@ const LanguageLevel = () => {
                 </div>
               )}
 
-              <Button onClick={() => setCurrentSection('quiz')} className="mt-4 cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute">
-                Take the Quiz <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+              {theoryDone ? (
+                <div className="flex items-center gap-2 p-4 rounded-2xl bg-cute-success/10 border-2 border-cute-success/20">
+                  <CheckCircle2 className="h-5 w-5 text-cute-success" />
+                  <span className="text-cute-success font-bold">Theory Completed</span>
+                </div>
+              ) : (
+                <Button onClick={handleTheoryComplete} className="mt-4 cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Mark as Completed
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
@@ -514,7 +587,13 @@ const LanguageLevel = () => {
                 <div className="text-center py-8 space-y-4">
                   <div className="text-6xl animate-float">🎉</div>
                   <h3 className="text-2xl font-extrabold text-foreground">Quiz Complete!</h3>
-                  <p className="text-muted-foreground">Switching to coding challenge... ✨</p>
+                  <p className="text-muted-foreground">Coding Challenge is now unlocked! ✨</p>
+                  {quizDone && (
+                    <div className="flex items-center justify-center gap-2 text-cute-success font-bold">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Quiz Passed
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -628,7 +707,7 @@ const LanguageLevel = () => {
                         <div className="w-3 h-3 rounded-full bg-cute-success" />
                       </div>
                       <span className="text-muted-foreground text-xs font-semibold ml-2">
-                        {isSqlTrack ? 'query.sql' : `${(language || '').toLowerCase()}_solution.${language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'java' ? 'java' : language === 'html' ? 'html' : language === 'css' ? 'css' : 'c'}`}
+                        {isSqlTrack ? 'query.sql' : `${lang}_solution.${language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'java' ? 'java' : language === 'html' ? 'html' : language === 'css' ? 'css' : 'c'}`}
                       </span>
                     </div>
                     <div className="flex gap-2">
@@ -655,10 +734,10 @@ const LanguageLevel = () => {
                     </div>
                   </div>
                   <MonacoCodeEditor
-                    language={isSqlTrack ? 'sql' : (language || 'c')}
+                    language={isSqlTrack ? 'sql' : lang}
                     value={userCode}
                     onChange={setUserCode}
-                    placeholder={isSqlTrack ? '-- Write your SQL query here...' : `// Write your ${(language || '').toUpperCase()} code here...`}
+                    placeholder={isSqlTrack ? '-- Write your SQL query here...' : `// Write your ${lang.toUpperCase()} code here...`}
                   />
                 </Card>
 
@@ -712,7 +791,7 @@ const LanguageLevel = () => {
                     variant="outline"
                     className="cute-btn rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-9 px-5 ml-auto"
                   >
-                    {currentLevel < MAX_LEVELS ? 'Next Level' : 'Dashboard'}
+                    {currentLevel < MAX_LEVELS ? 'Next Topic' : 'Back to Topics'}
                     <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 </div>
@@ -744,6 +823,10 @@ const LanguageLevel = () => {
           <Card className="cute-card border-0 animate-fade-in">
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">No coding challenge available for this level yet.</p>
+              <Button onClick={handleNextLevel} className="mt-4 cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute">
+                {currentLevel < MAX_LEVELS ? 'Next Topic' : 'Back to Topics'}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
             </CardContent>
           </Card>
         )}
