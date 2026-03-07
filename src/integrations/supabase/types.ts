@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      certificates: {
+        Row: {
+          certificate_id: string
+          completed_at: string
+          course_name: string
+          id: string
+          language: string
+          student_name: string
+          user_id: string
+        }
+        Insert: {
+          certificate_id: string
+          completed_at?: string
+          course_name: string
+          id?: string
+          language: string
+          student_name: string
+          user_id: string
+        }
+        Update: {
+          certificate_id?: string
+          completed_at?: string
+          course_name?: string
+          id?: string
+          language?: string
+          student_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       level_content_cache: {
         Row: {
           content: Json
@@ -55,6 +85,33 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      topic_step_progress: {
+        Row: {
+          completed_at: string
+          id: string
+          language: string
+          level: number
+          step: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          language: string
+          level: number
+          step: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          language?: string
+          level?: number
+          step?: string
           user_id?: string
         }
         Relationships: []
