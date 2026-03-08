@@ -19,8 +19,12 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
 
+    const redirectUrl = window.location.hostname === 'localhost'
+      ? `${window.location.origin}/reset-password`
+      : 'https://codeclimb.lovable.app/reset-password';
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: redirectUrl,
     });
 
     if (error) {
