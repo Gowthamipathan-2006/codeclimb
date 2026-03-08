@@ -327,7 +327,7 @@ const LanguageLevel = () => {
         await completeStep(lang, currentLevel, 'challenge');
         await completeLevel(lang, currentLevel);
         setCodeOutput(`${resultText}\n\n✅ All tests passed! Topic complete!`);
-        toast({ title: "🎉 Topic Complete!", description: "Great job! You mastered this topic!" });
+        toast({ title: "🎉 Topic Complete!", description: "Great job! You completed this topic!" });
         setShowCelebration(true);
       } else {
         setSubmitResult('fail');
@@ -357,7 +357,7 @@ const LanguageLevel = () => {
           await completeStep(lang, currentLevel, 'challenge');
           await completeLevel(lang, currentLevel);
           setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Topic complete!`);
-          toast({ title: "🎉 Topic Complete!", description: "Great job! You mastered this topic!" });
+          toast({ title: "🎉 Topic Complete!", description: "Great job! You completed this topic!" });
           setShowCelebration(true);
         } else {
           setSubmitResult('fail');
@@ -491,7 +491,7 @@ const LanguageLevel = () => {
               ) : (
                 <Button onClick={handleTheoryComplete} className="mt-4 cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Mark as Completed
+                  Mark Theory as Completed
                 </Button>
               )}
             </CardContent>

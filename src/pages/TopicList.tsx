@@ -4,19 +4,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgress } from '@/contexts/ProgressContext';
 import { useStepProgress } from '@/hooks/useStepProgress';
-import { curriculum, getTopic, getDifficulty } from '@/utils/curriculum';
+import { curriculum, getDifficulty } from '@/utils/curriculum';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, CheckCircle2, Award, Code, Lock } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, Award, Code } from 'lucide-react';
 
 const MAX_LEVELS = 30;
 
-const difficultyColors: Record<string, string> = {
-  Beginner: 'bg-cute-mint/20 text-accent-foreground',
-  Intermediate: 'bg-cute-yellow/20 text-secondary-foreground',
-  Advanced: 'bg-cute-pink/20 text-secondary-foreground',
+const difficultyMeta: Record<string, { label: string; emoji: string; cardBg: string; badgeBg: string }> = {
+  Beginner: { label: 'Easy', emoji: '🟢', cardBg: 'bg-cute-mint/10', badgeBg: 'bg-cute-mint/20 text-accent-foreground' },
+  Intermediate: { label: 'Medium', emoji: '🟡', cardBg: 'bg-cute-yellow/10', badgeBg: 'bg-cute-yellow/20 text-secondary-foreground' },
+  Advanced: { label: 'Hard', emoji: '🔴', cardBg: 'bg-cute-pink/10', badgeBg: 'bg-cute-pink/20 text-secondary-foreground' },
 };
 
 const TopicList = () => {
@@ -42,6 +42,13 @@ const TopicList = () => {
   const topics = curriculum[lang] || [];
   const completedTopics = getCompletedTopicsCount(lang, topics.length);
   const progress = (completedTopics / topics.length) * 100;
+
+  // Group topics by difficulty section
+  const sections = [
+    { difficulty: 'Beginner', topics: topics.slice(0, 10) },
+    { difficulty: 'Intermediate', topics: topics.slice(10, 20) },
+    { difficulty: 'Advanced', topics: topics.slice(20, 30) },
+  ].filter(s => s.topics.length > 0);
 
   return (
     <div className="min-h-screen cute-gradient">
@@ -69,61 +76,75 @@ const TopicList = () => {
           </CardContent>
         </Card>
 
-        {/* Topic List */}
-        <div className="space-y-3">
-          {topics.map((topicName, index) => {
-            const level = index + 1;
-            const difficulty = getDifficulty(level);
-            const stepsCompleted = getTopicStepCount(lang, level);
-            const isFullyDone = stepsCompleted === 3;
-            const theoryDone = isStepCompleted(lang, level, 'theory');
-            const quizDone = isStepCompleted(lang, level, 'quiz');
-            const challengeDone = isStepCompleted(lang, level, 'challenge');
+        {/* Topic List grouped by difficulty */}
+        <div className="space-y-8">
+          {sections.map((section) => {
+            const meta = difficultyMeta[section.difficulty];
+            const startIndex = section.difficulty === 'Beginner' ? 0 : section.difficulty === 'Intermediate' ? 10 : 20;
 
             return (
-              <Card
-                key={level}
-                className="cute-card border-0 hover:shadow-cute-hover transition-all duration-300 cursor-pointer hover:-translate-y-0.5 animate-fade-in"
-                onClick={() => navigate(`/language/${language}/${level}`)}
-              >
-                <CardContent className="py-4 px-5">
-                  <div className="flex items-center gap-4">
-                    {/* Level number */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 ${
-                      isFullyDone ? 'bg-cute-success/20 text-cute-success' : 'bg-primary/10 text-primary'
-                    }`}>
-                      {isFullyDone ? <CheckCircle2 className="h-5 w-5" /> : level}
-                    </div>
+              <div key={section.difficulty} className="space-y-3 animate-fade-in">
+                {/* Section Header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{meta.emoji}</span>
+                  <h2 className="text-lg font-extrabold text-foreground">{meta.label}</h2>
+                  <Badge className={`${meta.badgeBg} border-0 rounded-full text-[10px] font-bold`}>
+                    {section.topics.length} topics
+                  </Badge>
+                </div>
 
-                    {/* Topic info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground font-bold text-sm truncate">{topicName}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge className={`text-[10px] border-0 rounded-full px-2 py-0 ${difficultyColors[difficulty] || 'bg-muted text-muted-foreground'}`}>
-                          {difficulty}
-                        </Badge>
-                        {/* Step indicators */}
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-4 h-4 rounded-full flex items-center justify-center ${theoryDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
-                            <BookOpen className="h-2.5 w-2.5" />
+                {section.topics.map((topicName, idx) => {
+                  const level = startIndex + idx + 1;
+                  const stepsCompleted = getTopicStepCount(lang, level);
+                  const isFullyDone = stepsCompleted === 3;
+                  const theoryDone = isStepCompleted(lang, level, 'theory');
+                  const quizDone = isStepCompleted(lang, level, 'quiz');
+                  const challengeDone = isStepCompleted(lang, level, 'challenge');
+
+                  return (
+                    <Card
+                      key={level}
+                      className="cute-card border-0 hover:shadow-cute-hover transition-all duration-300 cursor-pointer hover:-translate-y-0.5"
+                      onClick={() => navigate(`/language/${language}/${level}`)}
+                    >
+                      <CardContent className="py-4 px-5">
+                        <div className="flex items-center gap-4">
+                          {/* Level number */}
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 ${
+                            isFullyDone ? 'bg-cute-success/20 text-cute-success' : 'bg-primary/10 text-primary'
+                          }`}>
+                            {isFullyDone ? <CheckCircle2 className="h-5 w-5" /> : level}
                           </div>
-                          <div className={`w-4 h-4 rounded-full flex items-center justify-center ${quizDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
-                            <Award className="h-2.5 w-2.5" />
+
+                          {/* Topic info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-foreground font-bold text-sm truncate">{topicName}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {/* Step indicators */}
+                              <div className="flex items-center gap-1.5">
+                                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${theoryDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
+                                  <BookOpen className="h-2.5 w-2.5" />
+                                </div>
+                                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${quizDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
+                                  <Award className="h-2.5 w-2.5" />
+                                </div>
+                                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${challengeDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
+                                  <Code className="h-2.5 w-2.5" />
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className={`w-4 h-4 rounded-full flex items-center justify-center ${challengeDone ? 'bg-cute-success text-card' : 'bg-muted text-muted-foreground'}`}>
-                            <Code className="h-2.5 w-2.5" />
-                          </div>
+
+                          {/* Status */}
+                          <span className="text-muted-foreground text-xs font-semibold shrink-0">
+                            {stepsCompleted}/3
+                          </span>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <span className="text-muted-foreground text-xs font-semibold shrink-0">
-                      {stepsCompleted}/3
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             );
           })}
         </div>
