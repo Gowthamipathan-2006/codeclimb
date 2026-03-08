@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Code, Lock, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const ResetPassword = () => {
@@ -57,7 +57,6 @@ const ResetPassword = () => {
         return;
       }
 
-      // Allow brief time for hash-token exchange to finish and emit PASSWORD_RECOVERY
       await new Promise((resolve) => setTimeout(resolve, 1200));
       if (!mounted) return;
 
@@ -75,7 +74,6 @@ const ResetPassword = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-
       if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
         setSessionReady(true);
         setLinkStatus(null);
@@ -147,12 +145,17 @@ const ResetPassword = () => {
 
     if (success) {
       return (
-        <Button
-          onClick={() => navigate('/login')}
-          className="w-full cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute"
-        >
-          Go to Login
-        </Button>
+        <div className="space-y-4">
+          <p className="text-center text-muted-foreground">
+            Password updated successfully. Please login.
+          </p>
+          <Button
+            onClick={() => navigate('/login')}
+            className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute"
+          >
+            Go to Login
+          </Button>
+        </div>
       );
     }
 
@@ -160,14 +163,35 @@ const ResetPassword = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="password" className="text-foreground font-semibold">New Password</Label>
-          <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground" placeholder="At least 6 characters" />
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
+            placeholder="At least 6 characters"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmPassword" className="text-foreground font-semibold">Confirm Password</Label>
-          <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground" placeholder="Confirm your new password" />
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
+            placeholder="Confirm your new password"
+          />
         </div>
-        <Button type="submit" className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute" disabled={loading}>
-          {loading ? 'Updating...' : 'Reset Password'}
+        <Button
+          type="submit"
+          className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute"
+          disabled={loading}
+        >
+          <Lock className="h-4 w-4 mr-2" />
+          {loading ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
     );
@@ -178,16 +202,16 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md cute-card border-0 animate-fade-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-3xl bg-cute-lavender/20 flex items-center justify-center">
-              {success ? <CheckCircle2 className="h-8 w-8 text-cute-success" /> : <Lock className="h-8 w-8 text-primary" />}
+            <div className="w-16 h-16 rounded-3xl bg-primary/15 flex items-center justify-center">
+              {success ? <CheckCircle2 className="h-8 w-8 text-primary" /> : <Code className="h-8 w-8 text-primary" />}
             </div>
           </div>
           <CardTitle className="text-2xl font-extrabold text-foreground">
-            {success ? 'Password Updated! ✅' : 'Reset Password 🔐'}
+            {success ? 'Password Updated! ✅' : 'Reset Your Password 🔐'}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             {success
-              ? 'Password updated successfully. Please login.'
+              ? 'You can now login with your new password.'
               : checking
               ? 'Please wait…'
               : sessionReady
@@ -197,7 +221,17 @@ const ResetPassword = () => {
               : 'Reset link is not valid.'}
           </CardDescription>
         </CardHeader>
-        <CardContent>{renderContent()}</CardContent>
+        <CardContent>
+          {renderContent()}
+          {!success && !checking && (
+            <div className="mt-4 text-center">
+              <Link to="/login" className="text-muted-foreground hover:text-primary text-sm font-semibold inline-flex items-center gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Login
+              </Link>
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
