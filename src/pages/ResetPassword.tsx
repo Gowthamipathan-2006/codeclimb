@@ -16,29 +16,79 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [linkStatus, setLinkStatus] = useState<'expired' | 'invalid' | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event which fires when Supabase
-    // exchanges the hash-fragment tokens for a real session.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    let mounted = true;
+
+    const initRecoverySession = async () => {
+      const queryParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+      const errorCode = hashParams.get('error_code') || queryParams.get('error_code');
+      if (errorCode === 'otp_expired') {
+        if (!mounted) return;
+        setLinkStatus('expired');
+        setChecking(false);
+        return;
+      }
+
+      const code = queryParams.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          if (!mounted) return;
+          const isExpired = /expired|otp_expired/i.test(error.message);
+          setLinkStatus(isExpired ? 'expired' : 'invalid');
+          setChecking(false);
+          return;
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (session) {
         setSessionReady(true);
+        setLinkStatus(null);
+        setChecking(false);
+        return;
+      }
+
+      // Allow brief time for hash-token exchange to finish and emit PASSWORD_RECOVERY
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      if (!mounted) return;
+
+      const { data: { session: retriedSession } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (retriedSession) {
+        setSessionReady(true);
+        setLinkStatus(null);
+      } else {
+        setLinkStatus('invalid');
+      }
+      setChecking(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+        setSessionReady(true);
+        setLinkStatus(null);
         setChecking(false);
       }
     });
 
-    // Also check if a session already exists (e.g. fast token exchange)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionReady(true);
-      }
-      // Give the onAuthStateChange listener a moment to fire
-      setTimeout(() => setChecking(false), 1500);
-    });
+    initRecoverySession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +112,7 @@ const ResetPassword = () => {
     } else {
       setSuccess(true);
       await supabase.auth.signOut();
-      toast({ title: "Password Updated ✅", description: "You can now log in with your new password." });
+      toast({ title: "Password Updated ✅", description: "Password updated successfully. Please login." });
     }
     setLoading(false);
   };
@@ -80,7 +130,11 @@ const ResetPassword = () => {
       return (
         <div className="text-center space-y-4">
           <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-          <p className="text-muted-foreground">Invalid or expired reset link. Please request a new password reset.</p>
+          <p className="text-muted-foreground">
+            {linkStatus === 'expired'
+              ? 'This password reset link has expired. Please request a new reset link.'
+              : 'Invalid or expired reset link. Please request a new password reset.'}
+          </p>
           <Button
             onClick={() => navigate('/forgot-password')}
             className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute"
@@ -113,7 +167,7 @@ const ResetPassword = () => {
           <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl bg-muted/50 border-border text-foreground placeholder:text-muted-foreground" placeholder="Confirm your new password" />
         </div>
         <Button type="submit" className="w-full cute-btn rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-cute" disabled={loading}>
-          {loading ? 'Updating...' : 'Update Password'}
+          {loading ? 'Updating...' : 'Reset Password'}
         </Button>
       </form>
     );
@@ -132,7 +186,15 @@ const ResetPassword = () => {
             {success ? 'Password Updated! ✅' : 'Reset Password 🔐'}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            {success ? 'Password updated successfully. Please log in.' : checking ? 'Please wait…' : sessionReady ? 'Enter your new password below.' : ''}
+            {success
+              ? 'Password updated successfully. Please login.'
+              : checking
+              ? 'Please wait…'
+              : sessionReady
+              ? 'Enter your new password below.'
+              : linkStatus === 'expired'
+              ? 'This reset link has expired.'
+              : 'Reset link is not valid.'}
           </CardDescription>
         </CardHeader>
         <CardContent>{renderContent()}</CardContent>
