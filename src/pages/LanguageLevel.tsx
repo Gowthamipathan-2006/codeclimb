@@ -357,7 +357,7 @@ const LanguageLevel = () => {
           await completeStep(lang, currentLevel, 'challenge');
           await completeLevel(lang, currentLevel);
           setCodeOutput(`🎯 Submission Results\n${'─'.repeat(30)}\n\n${resultText}\n\n✅ All tests passed! Topic complete!`);
-          toast({ title: "🎉 Topic Complete!", description: "Great job! You mastered this topic!" });
+          toast({ title: "🎉 Topic Complete!", description: "Great job! You completed this topic!" });
           setShowCelebration(true);
         } else {
           setSubmitResult('fail');
