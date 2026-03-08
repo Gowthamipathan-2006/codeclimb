@@ -491,7 +491,7 @@ const LanguageLevel = () => {
               ) : (
                 <Button onClick={handleTheoryComplete} className="mt-4 cute-btn rounded-full bg-cute-success text-foreground font-bold hover:opacity-90 shadow-cute">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Mark as Completed
+                  Mark Theory as Completed
                 </Button>
               )}
             </CardContent>
